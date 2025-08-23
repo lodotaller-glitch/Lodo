@@ -96,6 +96,8 @@ export default function ChangeSchedulePage() {
 
   const handleCalendarSelection = useCallback(
     ({ professorId: pId, slots }) => {
+      console.log("handleCalendarSelection", pId, slots);
+      
       setProfessorId(pId || professorId);
       setChosenSlots(
         slots.map(({ dayOfWeek, startMin, endMin }) => ({
@@ -109,6 +111,8 @@ export default function ChangeSchedulePage() {
     [professorId]
   );
 
+  console.log(professorId, "selected professor");
+  
   async function handleSave() {
     
     try {
@@ -116,20 +120,25 @@ export default function ChangeSchedulePage() {
       setError("");
       if (mode === "current") {
         console.log(enrollments);
+        console.log(String(professorId), "professorId");
+        
         const currentEnr = enrollments.find(
           (e) =>
             e.year === year &&
-          e.month === month 
+          // e.month === month 
           // &&
-          // String(e.professor?._id || e.professor || e.profesor) ===
-          // String(professorId)
+          String(e.professor?._id) ===
+          String(professorId)
         );
-        console.log(currentEnr);
+        console.log(enrollments, "enrollments");
+        console.log(currentEnr, "currentEnr");
         
         if (!currentEnr)
           throw new Error(
         "No se encontró la inscripción del mes actual para ese profesor."
       );
+      console.log("Saving current month slots", currentEnr._id, chosenSlots);
+      
         await saveCurrentMonthSlots({
           enrollmentId: currentEnr._id,
           chosenSlots,
@@ -173,7 +182,7 @@ export default function ChangeSchedulePage() {
           motivo: "Reprogramación desde panel",
         });
       }
-      router.back();
+      // router.back();
     } catch (e) {
       setError(e?.response?.data?.error || e?.message || "No se pudo guardar");
     } finally {

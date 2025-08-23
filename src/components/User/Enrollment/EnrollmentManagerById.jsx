@@ -103,6 +103,9 @@ export default function EnrollmentManagerById({
     }
   }
 
+  console.log(items, "items");
+  
+
   return (
     <section className="space-y-4">
       <header className="flex items-center justify-between">

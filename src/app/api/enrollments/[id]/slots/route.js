@@ -1,6 +1,7 @@
 import { NextResponse as _NR } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import { Enrollment, ProfessorSchedule, User } from "@/models";
+import { slotKey } from "@/functions/slotKey";
 
 export async function PATCH(req, { params }) {
   try {
@@ -9,11 +10,13 @@ export async function PATCH(req, { params }) {
     const body = await req.json();
     const { chosenSlots = [], assignNow } = body || {};
     const en = await Enrollment.findById(id);
+    console.log(en, "enrollment in PATCH /enrollments/[id]/slots");
+
     if (!en)
       return _NR.json({ error: "Inscripción no encontrada" }, { status: 404 });
     console.log(body, "body in PATCH /enrollments/[id]/slots");
     console.log(body.slots, "body in PATCH /enrollments/[id]/slots");
-    
+
     if (
       !Array.isArray(chosenSlots) ||
       chosenSlots.length < 1 ||
@@ -32,14 +35,22 @@ export async function PATCH(req, { params }) {
         { error: "Profesor sin horario vigente" },
         { status: 400 }
       );
-    const key = (s) => `${s.dayOfWeek}-${s.startMin}-${s.endMin}`;
-    const setSched = new Set(sched.slots.map(key));
+
+    const setSched = new Set(
+      sched.slots.map((s) => slotKey(s, sched.professor))
+    );
+
+    console.log(setSched, "setSched in PATCH /enrollments/[id]/slots");
+
     for (const s of chosenSlots) {
-      if (!setSched.has(key(s)))
+      console.log(setSched.has(slotKey(s, sched.professor)));
+      
+      if (!setSched.has(slotKey(s, sched.professor))) {
         return _NR.json(
           { error: "Alguna franja no existe en el horario" },
           { status: 409 }
         );
+      }
     }
 
     // si está asignada (o si assignNow=true), validar cupo

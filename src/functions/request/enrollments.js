@@ -22,6 +22,8 @@ export async function updateEnrollmentSlots(
   chosenSlots,
   assignNow
 ) {
+  console.log(enrollmentId, chosenSlots, "updateEnrollmentSlots");
+  
   const { data } = await api.patch(`/enrollments/${enrollmentId}/slots`, {
     chosenSlots,
     assignNow,

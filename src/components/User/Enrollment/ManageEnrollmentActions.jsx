@@ -23,12 +23,20 @@ export default function ManageEnrollmentActions({ enrollment, onChanged }) {
   );
 
   console.log(enrollment);
+  console.log(slotsMes);
+  
   
 
   async function saveMes() {
+    console.log("hola");
+    
     setSaving(true);
     setError("");
     try {
+      console.log("Saving current month slots", slotsMes);
+      console.log(enrollment._id);
+      
+      
       await updateEnrollmentSlots(
         enrollment._id,
         slotsMes,

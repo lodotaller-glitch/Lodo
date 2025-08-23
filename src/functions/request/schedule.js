@@ -17,6 +17,8 @@ export async function fetchEnrollmentsByStudent(studentId) {
   return data; // { enrollments }
 }
 export async function saveCurrentMonthSlots({ enrollmentId, chosenSlots }) {
+  console.log(enrollmentId, chosenSlots, "saveCurrentMonthSlots");
+  
   const { data } = await api.patch(`/enrollments/${enrollmentId}/slots`, {
     chosenSlots,
     assignNow: false,

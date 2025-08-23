@@ -52,6 +52,8 @@ export default function SlotPicker({
   );
 
   function toggle(slot) {
+    console.log(slot, "toggle slot");
+    
     const key = `${slot.dayOfWeek}-${slot.startMin}-${slot.endMin}`;
     const arr = [...value];
     const idx = arr.findIndex(
