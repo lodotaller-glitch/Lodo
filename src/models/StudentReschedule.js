@@ -39,7 +39,12 @@ const StudentRescheduleSchema = new Schema(
 
     slotFrom: { type: SlotSnapshotSchema, required: true },
     slotTo: { type: SlotSnapshotSchema, required: true },
-
+    fromProfessor: {
+      type: mongoose.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    toProfessor: { type: mongoose.Types.ObjectId, ref: "User", required: true },
     motivo: { type: String },
     createBy: { type: mongoose.Types.ObjectId, ref: "User" },
   },

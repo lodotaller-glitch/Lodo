@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { ProfessorSchedule, Enrollment, User } from "@/models";
+import {
+  ProfessorSchedule,
+  Enrollment,
+  User,
+  StudentReschedule,
+} from "@/models"; // 👈 agrega StudentReschedule
 import dbConnect from "@/lib/dbConnect";
 import { slotKey } from "@/functions/slotKey";
 
@@ -39,6 +44,14 @@ function buildDateTimeUTC(dateOnlyUTC, minutesFromMidnight) {
     )
   );
 }
+// normaliza una fecha a medianoche UTC y devuelve ISO (clave de mapa)
+function dateOnlyISO(d) {
+  const only = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+  );
+  return only.toISOString();
+}
+
 export async function GET(req) {
   try {
     await dbConnect();
@@ -91,7 +104,7 @@ export async function GET(req) {
       role: "professor",
       state: true,
     })
-      .select("_id name capacity")
+      .select("_id name capacity capacidadPorFranja")
       .lean();
     const userById = new Map(users.map((u) => [String(u._id), u]));
 
@@ -100,14 +113,18 @@ export async function GET(req) {
       professor: { $in: professorIds },
       year,
       month,
-      state: "activa",
+      $or: [{ state: "activa" }, { estado: "activa" }], // robustez por si tenés ambos campos
     })
-      .select("professor chosenSlots")
+      .select("professor chosenSlots assigned asignado")
       .lean();
 
-    // 4) Conteo por (professor, slot)
+    // 4) Conteo base por (professor, slot) — mensual, sin reprogramaciones
     const counts = new Map(); // key: profId => Map(slotKey => count)
     for (const e of enrollments) {
+      // sólo contamos las inscripciones asignadas
+      const isAssigned = e.assigned === true || e.asignado === true;
+      if (!isAssigned) continue;
+
       const pid = String(e.professor);
       if (!counts.has(pid)) counts.set(pid, new Map());
       const inner = counts.get(pid);
@@ -118,32 +135,78 @@ export async function GET(req) {
       }
     }
 
-    // 5) Expandir a eventos por día del mes
+    // 4.5) Reprogramaciones del mes: construimos mapas de entrada/salida POR DÍA
+    const reschedules = await StudentReschedule.find({
+      year,
+      month,
+      $or: [
+        { fromProfessor: { $in: professorIds } },
+        { toProfessor: { $in: professorIds } },
+        { proffesor: { $in: professorIds } },
+      ], // 'proffesor' legacy si lo guardaste así
+    }).lean();
+
+    const movedIn = new Map(); // key: `${pid}|${dateISO}|${slotKey}`
+    const movedOut = new Map(); // idem
+
+    const inc = (map, k) => map.set(k, (map.get(k) || 0) + 1);
+
+    for (const r of reschedules) {
+      const toProf = String(r.toProfessor || r.proffesor || ""); // compat con legado
+      const fromProf = String(r.fromProfessor || ""); // nuevo campo recomendado
+      const toDayISO = r.toDate ? dateOnlyISO(new Date(r.toDate)) : null;
+      const fromDayISO = r.fromDate ? dateOnlyISO(new Date(r.fromDate)) : null;
+
+      // moved IN
+      if (toProf && toDayISO && r.slotTo) {
+        const kSlotTo = slotKey(r.slotTo, toProf);
+        inc(movedIn, `${toProf}|${toDayISO}|${kSlotTo}`);
+      }
+      // moved OUT
+      if (fromProf && fromDayISO && r.slotFrom) {
+        const kSlotFrom = slotKey(r.slotFrom, fromProf);
+        inc(movedOut, `${fromProf}|${fromDayISO}|${kSlotFrom}`);
+      }
+      // Si aún no migraste fromProfessor/slotFrom, podés inferir con la Enrollment (más costoso).
+      // Recomendado: guardar siempre fromProfessor/slotFrom en el create/update de StudentReschedule.
+    }
+
+    // 5) Expandir a eventos por día del mes (ahora con ajustes por fecha)
     const events = [];
     for (const sc of schedules) {
       const pid = String(sc.professor);
       const prof = userById.get(pid);
 
-      const profName = prof?.name || "Professor";
-      const capacity = Math.max(1, Number(prof?.capacidadPorFranja ?? 10));
+      const profName = prof?.name || "Profesor";
+      const capacity = Math.max(
+        1,
+        Number(prof?.capacity ?? prof?.capacidadPorFranja ?? 10)
+      );
       const inner = counts.get(pid) || new Map();
+
       for (const s of sc.slots) {
         const k = slotKey(s, pid);
-        const taken = inner.get(k) || 0;
-        const left = Math.max(0, capacity - taken);
-        const status = left > 0 ? "available" : "full";
+        const takenBase = inner.get(k) || 0;
 
         const dates = datesForWeekdayInMonth(year, month, s.dayOfWeek);
         for (const day of dates) {
+          const iso = dateOnlyISO(day);
+          const movedOutDay = movedOut.get(`${pid}|${iso}|${k}`) || 0;
+          const movedInDay = movedIn.get(`${pid}|${iso}|${k}`) || 0;
+
+          const takenDay = Math.max(0, takenBase - movedOutDay + movedInDay);
+          const leftDay = Math.max(0, capacity - takenDay);
+          const status = leftDay > 0 ? "available" : "full";
+
           events.push({
-            title: `${profName} (${taken}/${capacity})`,
+            title: `${profName} (${takenDay}/${capacity})`, // 👈 día-específico
             start: buildDateTimeUTC(day, s.startMin),
             end: buildDateTimeUTC(day, s.endMin),
             professorId: pid,
             professorName: profName,
             slotKey: k,
             weekday: s.dayOfWeek,
-            capacityLeft: left,
+            capacityLeft: leftDay, // 👈 día-específico
             status,
             _id: sc._id, // schedule ID for reference
           });
@@ -154,7 +217,7 @@ export async function GET(req) {
     events.sort((a, b) => a.start - b.start);
     return NextResponse.json({ events });
   } catch (err) {
-    console.error("GET /api/calendario/professores error:", err);
+    console.error("GET /api/calendar error:", err);
     return NextResponse.json(
       { error: "Error del servidor", details: err?.message },
       { status: 500 }

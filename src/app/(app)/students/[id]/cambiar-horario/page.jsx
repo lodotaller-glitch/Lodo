@@ -14,14 +14,31 @@ import {
 
 const BRAND = { main: "#A08775" };
 
+// --- Utils de tiempo (TODO: si ya existen en utils/, reemplazar por import) ---
 function nextYearMonth(y, m) {
-  return m === 12 ? { y: y + 1, m: 1 } : { y, m: m + 1 };
+  // m: 1..12 → devuelve { y, m } del siguiente mes
+  const nm = m === 12 ? 1 : m + 1;
+  const ny = m === 12 ? y + 1 : y;
+  return { y: ny, m: nm };
+}
+function startOfMonthLocal(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
 }
 function endOfMonthLocal(date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
 }
 function daysToEndOfMonth(date) {
   return Math.ceil((endOfMonthLocal(date) - date) / (1000 * 60 * 60 * 24));
+}
+function buildDateWindow(centerDate) {
+  // Ventana ±7 días para reprogramar una clase puntual
+  const start = new Date(centerDate);
+  start.setDate(start.getDate() - 7);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(centerDate);
+  end.setDate(end.getDate() + 7);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
 }
 
 export default function ChangeSchedulePage() {
@@ -46,18 +63,17 @@ export default function ChangeSchedulePage() {
     [user]
   );
 
-  useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [user, loading, router]);
-
+  // Carga inscripción/es del alumno
   useEffect(() => {
     if (!studentId) return;
-    fetchEnrollmentsByStudent(studentId)
-      .then(({ enrollments }) => {
+    setError("");
+    (async () => {
+      try {
+        const { enrollments } = await fetchEnrollmentsByStudent(studentId);
         setEnrollments(enrollments || []);
         const now = new Date();
-        const y = now.getUTCFullYear(),
-          m = now.getUTCMonth() + 1;
+        const y = now.getUTCFullYear();
+        const m = now.getUTCMonth() + 1;
         const current =
           enrollments?.find((e) => e.year === y && e.month === m) ||
           enrollments?.[0];
@@ -70,8 +86,10 @@ export default function ChangeSchedulePage() {
           setInitialSlots(current.chosenSlots || current.slotsElegidos || []);
           setChosenSlots(current.chosenSlots || current.slotsElegidos || []);
         }
-      })
-      .catch((e) => setError(e?.message || "No se pudo cargar"));
+      } catch (e) {
+        setError(e?.message || "No se pudo cargar");
+      }
+    })();
   }, [studentId]);
 
   useEffect(() => {
@@ -80,74 +98,67 @@ export default function ChangeSchedulePage() {
 
   const target = useMemo(() => {
     if (mode === "current") return { year, month };
-    if (mode === "next") return nextYearMonth(year, month);
+    if (mode === "next") {
+      const { y, m } = nextYearMonth(year, month);
+      return { year: y, month: m };
+    }
     return { year, month }; // single usa ventana ±7 días
   }, [mode, year, month]);
 
-  const dateWindow = useMemo(() => {
-    if (!pickedOccurrence) return null;
-    const from = pickedOccurrence.date;
-    const ms = 7 * 24 * 60 * 60 * 1000;
-    return {
-      start: new Date(from.getTime() - ms),
-      end: new Date(from.getTime() + ms),
-    };
-  }, [pickedOccurrence]);
-
-  const handleCalendarSelection = useCallback(
-    ({ professorId: pId, slots }) => {
-      console.log("handleCalendarSelection", pId, slots);
-      
-      setProfessorId(pId || professorId);
-      setChosenSlots(
-        slots.map(({ dayOfWeek, startMin, endMin }) => ({
-          dayOfWeek,
-          startMin,
-          endMin,
-        }))
-      );
-      setSelection({ professorId: pId, slots });
-    },
-    [professorId]
+  const dateWindow = useMemo(
+    () => (pickedOccurrence ? buildDateWindow(pickedOccurrence.date) : null),
+    [pickedOccurrence]
   );
 
-  console.log(professorId, "selected professor");
-  
+  const blockedMsg = useMemo(() => {
+    if (user?.role !== "student") return "";
+    if (mode === "current")
+      return "Los alumnos no pueden editar el mes en curso. Pedile al admin.";
+    if (mode === "next" && !canStudentEditNext)
+      return "Los cambios para el mes que viene solo se permiten en los últimos 5 días del mes actual.";
+    return "";
+  }, [user, mode, canStudentEditNext]);
+
+  const handleCalendarSelection = useCallback(
+    ({ professorId, slots }) => {
+      console.log(slots);
+
+      // slots: [{ dayOfWeek, startMin, endMin }]
+      if (mode !== "single" && slots.length > 2) {
+        slots = slots.slice(0, 2); // por las dudas
+      }
+
+      setSelection({ professorId, slots });
+      if (mode !== "single") setChosenSlots(slots);
+    },
+    [mode]
+  );
+  console.log(selection);
+
   async function handleSave() {
-    
     try {
       setSaving(true);
       setError("");
+
       if (mode === "current") {
-        console.log(enrollments);
-        console.log(String(professorId), "professorId");
-        
         const currentEnr = enrollments.find(
           (e) =>
             e.year === year &&
-          // e.month === month 
-          // &&
-          String(e.professor?._id) ===
-          String(professorId)
+            e.month === month &&
+            String(e.professor?._id || e.professor || e.profesor) ===
+              String(professorId)
         );
-        console.log(enrollments, "enrollments");
-        console.log(currentEnr, "currentEnr");
-        
         if (!currentEnr)
           throw new Error(
-        "No se encontró la inscripción del mes actual para ese profesor."
-      );
-      console.log("Saving current month slots", currentEnr._id, chosenSlots);
-      
+            "No se encontró la inscripción del mes actual para ese profesor."
+          );
+
         await saveCurrentMonthSlots({
           enrollmentId: currentEnr._id,
           chosenSlots,
+          professorId: selection.professorId,
         });
       } else if (mode === "next") {
-        if (user.role === "student" && !canStudentEditNext)
-          throw new Error(
-            "Como estudiante, solo podés cambiar el mes siguiente dentro de los últimos 5 días del mes actual."
-          );
         const { year: yy, month: mm } = target;
         await saveNextMonthSlots({
           studentId,
@@ -155,7 +166,7 @@ export default function ChangeSchedulePage() {
           year: yy,
           month: mm,
           chosenSlots,
-          asStudent: user.role === "student",
+          asStudent: user?.role === "student",
         });
       } else {
         // single
@@ -163,6 +174,7 @@ export default function ChangeSchedulePage() {
           throw new Error("Elegí primero qué clase querés reprogramar.");
         if (!selection.professorId || selection.slots.length !== 1)
           throw new Error("Elegí un único turno en el calendario.");
+
         const currentEnr = enrollments.find(
           (e) =>
             e.year === year &&
@@ -171,61 +183,43 @@ export default function ChangeSchedulePage() {
               String(professorId)
         );
         if (!currentEnr) throw new Error("No se encontró la inscripción.");
+
         const toSlot = selection.slots[0];
-        // Podés mandar toDateISO=null si lo determina el backend desde slot+ventana; aquí enviamos el mismo day/time del evento clickeado
         await rescheduleSingleClass({
           enrollmentId: currentEnr._id,
           fromDateISO: pickedOccurrence.date.toISOString(),
           toProfessorId: selection.professorId,
           toSlot,
-          toDateISO: null, // el backend puede validarlo dentro de ±7 días; si requerís fecha exacta, guardala al hacer click
-          motivo: "Reprogramación desde panel",
         });
       }
+
       // router.back();
-    } catch (e) {
-      setError(e?.response?.data?.error || e?.message || "No se pudo guardar");
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || "No se pudo guardar");
     } finally {
       setSaving(false);
     }
   }
 
-  const blockedMsg = useMemo(() => {
-    if (user?.role !== "student") return null;
-    if (mode === "next" && !canStudentEditNext)
-      return "Como estudiante, solo podés cambiar el mes siguiente en los últimos 5 días del mes actual.";
-    if (mode === "single")
-      return "Como estudiante, solo podés reprogramar 1 clase por mes (el backend lo valida).";
-    return null;
-  }, [user, mode, canStudentEditNext]);
+  if (loading) return <main className="p-6">Cargando…</main>;
 
   return (
-    <main className="max-w-5xl mx-auto p-6 space-y-6">
-      <header className="flex items-center justify-between">
+    <main className="p-6">
+      <section className="max-w-5xl mx-auto space-y-6">
         <h1 className="text-2xl font-semibold">Cambiar horario</h1>
-        <button
-          onClick={() => router.back()}
-          className="px-3 py-2 rounded-xl border"
-        >
-          Volver
-        </button>
-      </header>
 
-      {error && (
-        <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
-          {error}
-        </div>
-      )}
+        {error && (
+          <div className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg p-3">
+            {error}
+          </div>
+        )}
 
-      <section className="bg-white rounded-2xl shadow p-4 space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm">Alcance:</span>
+        <div className="flex items-center gap-3">
           <ScopeSwitcher
             value={mode}
             onChange={setMode}
-            disabledNext={
-              false /* el backend decide si rechaza según rol/fecha */
-            }
+            disabledNext={user?.role === "student" && !canStudentEditNext}
             disabledSingle={false}
           />
           <div className="ml-auto text-sm">
@@ -256,22 +250,10 @@ export default function ChangeSchedulePage() {
 
         <CalendarSlotSelector
           professorId={professorId}
-          year={
-            mode === "single"
-              ? year
-              : mode === "next"
-              ? nextYearMonth(year, month).y
-              : year
-          }
-          month={
-            mode === "single"
-              ? month
-              : mode === "next"
-              ? nextYearMonth(year, month).m
-              : month
-          }
+          year={mode === "single" ? year : target.year}
+          month={mode === "single" ? month : target.month}
           initialSlots={
-            mode === "current" || mode === "next" ? initialSlots : []
+            mode === "current" || mode === "next" ? initialSlots : undefined
           }
           allowProfessorChange={mode !== "current"}
           dateWindow={mode === "single" && pickedOccurrence ? dateWindow : null}

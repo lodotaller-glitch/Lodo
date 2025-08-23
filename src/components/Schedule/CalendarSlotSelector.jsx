@@ -4,10 +4,7 @@ import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { startOfWeek, format, parse, getDay } from "date-fns";
 import es from "date-fns/locale/es";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import {
-  fetchAllProfessorsMonthEvents,
-  fetchProfessorMonthEvents,
-} from "@/functions/request/schedule";
+import { fetchAllProfessorsMonthEvents } from "@/functions/request/schedule";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 const DOW = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -26,9 +23,9 @@ function slotKeyWithProf(s, professorId) {
 }
 
 function strMin(min) {
-  const h = Math.floor(min / 60),
-    m = min % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const h = String(Math.floor(min / 60)).padStart(2, "0");
+  const m = String(min % 60).padStart(2, "0");
+  return `${h}:${m}`;
 }
 
 export default function CalendarSlotSelector({
@@ -36,19 +33,31 @@ export default function CalendarSlotSelector({
   year,
   month,
   initialSlots = [],
-  allowProfessorChange = false, // 👈 nuevo flag
+  allowProfessorChange = false,
+  dateWindow = null, // {start, end} opcional para modo "single"
+  maxSlots = 2,
   onChange,
 }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [selected, setSelected] = useState(() => initialSlots);
+  const [selected, setSelected] = useState(() => initialSlots ?? []);
   const [monthDate, setMonthDate] = useState(
     () => new Date(Date.UTC(year, month - 1, 1))
   );
   const [selectedProfessor, setSelectedProfessor] = useState(
     professorId || null
   );
+
+  // Mantener sincronizado selectedProfessor cuando cambia prop
+  useEffect(() => {
+    if (professorId) setSelectedProfessor(professorId);
+  }, [professorId]);
+
+  useEffect(() => {
+    if (maxSlots === 1) return; // no pisar selección en single
+    setSelected(initialSlots || []);
+  }, [initialSlots, maxSlots]);
 
   const selectedKeys = useMemo(
     () =>
@@ -61,36 +70,57 @@ export default function CalendarSlotSelector({
     setLoading(true);
     setError("");
     try {
-      const { events } = await (allowProfessorChange
-        ? fetchAllProfessorsMonthEvents({ year, month })
-        : fetchProfessorMonthEvents({ professorId, year, month }));
-      const mapped = (events || []).map((ev) => {
-        const start = new Date(ev.start);
-        const end = new Date(ev.end);
+      const data = await fetchAllProfessorsMonthEvents({ year, month });
 
-        const dayOfWeek = ev.dayOfWeek ?? ev.weekday ?? start.getUTCDay();
-        const startMin =
-          ev.startMin ?? start.getUTCHours() * 60 + start.getUTCMinutes();
-        const endMin =
-          ev.endMin ?? end.getUTCHours() * 60 + end.getUTCMinutes();
-        const key =
-          ev.slotKey ?? `${ev.professorId}-${dayOfWeek}-${startMin}-${endMin}`;
+      const mapped = (data?.events || [])
+        .map((ev) => {
+          const pid =
+            ev.professorId ||
+            ev.professor ||
+            ev.profesor ||
+            ev.prof ||
+            (ev.slotKey ? String(ev.slotKey).split("-")[0] : undefined);
 
-        return {
-          title: ev.title,
-          start,
-          end,
-          resource: {
-            ...ev,
-            dayOfWeek,
-            startMin,
-            endMin,
+          const start = new Date(ev.start);
+          const end = new Date(ev.end);
+          const dayOfWeek = ev.dayOfWeek ?? ev.weekday ?? start.getUTCDay();
+          const startMin =
+            ev.startMin ?? start.getUTCHours() * 60 + start.getUTCMinutes();
+          const endMin =
+            ev.endMin ?? end.getUTCHours() * 60 + end.getUTCMinutes();
+          const key =
+            ev.slotKey || slotKeyWithProf({ dayOfWeek, startMin, endMin }, pid);
+
+          // Filtrar por ventana si corresponde (modo single)
+          if (dateWindow) {
+            if (start < dateWindow.start || end > dateWindow.end) return null;
+          }
+
+          return {
+            title:
+              ev.title ||
+              `${ev.professorName ? ev.professorName + " • " : ""}${
+                DOW[dayOfWeek]
+              } ${strMin(startMin)}–${strMin(endMin)}${
+                typeof ev.capacityLeft === "number"
+                  ? ` • ${ev.capacityLeft} disp.`
+                  : ""
+              }`,
+            start,
+            end,
             slotKey: key,
-            professorId: ev.professorId,
-          },
-          allDay: false,
-        };
-      });
+            resource: {
+              ...ev,
+              dayOfWeek,
+              startMin,
+              endMin,
+              slotKey: key,
+              professorId: pid,
+            },
+            allDay: false,
+          };
+        })
+        .filter(Boolean);
 
       setEvents(mapped);
     } catch (e) {
@@ -99,7 +129,7 @@ export default function CalendarSlotSelector({
     } finally {
       setLoading(false);
     }
-  }, [professorId, year, month]);
+  }, [allowProfessorChange, professorId, year, month, dateWindow]);
 
   useEffect(() => {
     fetchData();
@@ -108,18 +138,19 @@ export default function CalendarSlotSelector({
   const eventPropGetter = useCallback(
     (event) => {
       const r = event.resource;
-
       const k = event.slotKey ?? slotKeyWithProf(r, r.professorId);
-
       const isSelected = selectedKeys.has(k);
+      const disabled = r.status === "full" || r.capacityLeft === 0;
+
       const base = {
-        borderRadius: 12,
-        border: `1px solid ${BRAND.main}22`,
-        borderLeft: `6px solid ${BRAND.main}`,
-        backgroundColor: isSelected ? BRAND.main : "white",
-        color: isSelected ? "#fff" : BRAND.text,
+        backgroundColor: isSelected ? BRAND.main : BRAND.soft,
+        color: isSelected ? "white" : BRAND.text,
+        border: isSelected ? `2px solid ${BRAND.main}` : "1px solid #ddd",
+        borderRadius: "10px",
+        opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? "not-allowed" : "pointer",
       };
-      if (r.status === "full" && !isSelected) {
+      if (disabled && !isSelected) {
         base.backgroundColor = "#fce7e7";
         base.color = "#7f1d1d";
       }
@@ -129,15 +160,12 @@ export default function CalendarSlotSelector({
   );
 
   function parseSlotFromResource(r) {
-    if (r.slotKey && r.professorId) {
-      const parts = r.slotKey.split("-").map(String);
-      // soporta formato con profId prefijado
-      // ej: "689cbb...-1-720-840" → quitamos el primer segmento si coincide con el professorId
+    if (r.slotKey) {
+      const parts = String(r.slotKey).split("-");
       const segs = parts[0] === String(r.professorId) ? parts.slice(1) : parts;
       const [dayOfWeek, startMin, endMin] = segs.map(Number);
       return { dayOfWeek, startMin, endMin };
     }
-    // Fallback: derivar desde start/end (en UTC; usa getHours si tu backend guarda horario local)
     const start = new Date(r.start);
     const end = new Date(r.end);
     const dayOfWeek = r.weekday ?? start.getUTCDay();
@@ -146,17 +174,11 @@ export default function CalendarSlotSelector({
     return { dayOfWeek, startMin, endMin };
   }
 
-  // FIX: toggleSlot
   function toggleSlot(resource) {
     const s = parseSlotFromResource(resource);
     const profId = resource.professorId;
-    // Si el profe cambia y ya había selección, reseteamos y empezamos con el nuevo profe
-    console.log(
-      profId,
-      selectedProfessor,
-      "profId and selectedProfessor in toggleSlot"
-    );
 
+    // Si cambia de profesor con selección previa, reemplazar
     if (
       selectedProfessor &&
       selectedProfessor !== profId &&
@@ -167,38 +189,28 @@ export default function CalendarSlotSelector({
       onChange?.({ professorId: profId, slots: [s] });
       return;
     }
-    // Si no había profe elegido aún, fìjalo
     if (!selectedProfessor) setSelectedProfessor(profId);
 
     const k = slotKeyWithProf(s, profId);
-
     const arr = [...selected];
-    const i = arr.findIndex((x) => slotKeyWithProf(x, profId) === k);
+    const idx = arr.findIndex((x) => slotKeyWithProf(x, profId) === k);
 
-    if (i >= 0) {
-      arr.splice(i, 1);
+    if (idx >= 0) {
+      arr.splice(idx, 1);
     } else {
-      if (arr.length >= 2) return;
+      if (arr.length >= (maxSlots || 2)) return;
       arr.push(s);
     }
-    console.log(arr);
 
     setSelected(arr);
     onChange?.({ professorId: profId, slots: arr });
   }
 
-  console.log(events, "events in CalendarSlotSelector");
-
   return (
-    <section className="space-y-3">
+    <div className="space-y-3">
       {error && (
-        <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+        <div className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg p-3">
           {error}
-        </div>
-      )}
-      {loading && (
-        <div className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3">
-          Cargando…
         </div>
       )}
 
@@ -216,8 +228,9 @@ export default function CalendarSlotSelector({
           popup
           onNavigate={(newDate) => setMonthDate(new Date(newDate))}
           onSelectEvent={(ev) => {
-            toggleSlot(ev.resource);
-            return;
+            const r = ev.resource;
+            if (r.status === "full" || r.capacityLeft === 0) return;
+            toggleSlot(r);
           }}
         />
       </div>
@@ -231,7 +244,7 @@ export default function CalendarSlotSelector({
             )}`
         )}
       </div>
-    </section>
+    </div>
   );
 }
 

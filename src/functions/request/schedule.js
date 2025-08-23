@@ -1,30 +1,36 @@
 import api from "@/lib/axios";
 
-export async function fetchProfessorMonthEvents({ year, month }) {
-  // GET /calendar
-  const { data } = await api.get("/calendar", { params: { year, month } });
-  return data; // { events }
-}
-export async function fetchAllProfessorsMonthEvents({ year, month }) {
-  // GET /calendar/professors
-  const { data } = await api.get("/calendar/professors", {
-    params: { year, month },
+// ✅ Un profesor (requiere professorId)
+export async function fetchProfessorMonthEvents({ professorId, year, month }) {
+  const { data } = await api.get("/calendar/professor", {
+    params: { professorId, year, month },
   });
   return data; // { events }
 }
+
+// ✅ Todos los profesores
+export async function fetchAllProfessorsMonthEvents({ year, month }) {
+  const { data } = await api.get("/calendar", { params: { year, month } });
+  return data; // { events }
+}
+
 export async function fetchEnrollmentsByStudent(studentId) {
   const { data } = await api.get(`/enrollments/by-student/${studentId}`);
   return data; // { enrollments }
 }
-export async function saveCurrentMonthSlots({ enrollmentId, chosenSlots }) {
-  console.log(enrollmentId, chosenSlots, "saveCurrentMonthSlots");
-  
-  const { data } = await api.patch(`/enrollments/${enrollmentId}/slots`, {
+
+export async function saveCurrentMonthSlots({
+  enrollmentId,
+  chosenSlots,
+  professorId,
+}) {
+  const { data } = await api.post(`/enrollments/${enrollmentId}/slots`, {
     chosenSlots,
-    assignNow: false,
+    professorId,
   });
   return data;
 }
+
 export async function saveNextMonthSlots({
   studentId,
   professorId,
@@ -39,30 +45,24 @@ export async function saveNextMonthSlots({
     year,
     month,
     chosenSlots,
-    assignNow: false,
     asStudent,
   });
   return data;
 }
-// Reprogramar UNA clase — usa tu ruta real /api/student-reschedules
+
 export async function rescheduleSingleClass({
   enrollmentId,
   fromDateISO,
   toProfessorId,
   toSlot,
-  toDateISO,
-  motivo,
 }) {
-  const payload = {
+  const { data } = await api.post(`/enrollments/student-reschedules`, {
     enrollmentId,
     fromDate: fromDateISO,
-    toDate: toDateISO,
+    toProfessorId,
     slotTo: toSlot,
-    motivo: motivo || "",
-  };
-  if (toProfessorId) payload.toProfessorId = toProfessorId; // si cambiás de profe
-  const { data } = await api.post("/api/student-reschedules", payload);
-  return data; // { ok, rescheduleId }
+  });
+  return data;
 }
 
 export async function fetchRescheduleOptions({
@@ -71,8 +71,8 @@ export async function fetchRescheduleOptions({
   toProfessorId,
 }) {
   const params = { enrollmentId, from: fromDateISO };
-  if (toProfessorId) params.toProfessorId = toProfessorId; // si querés cambiar profe
-  const { data } = await api.get("/api/student-reschedules/options", {
+  if (toProfessorId) params.toProfessorId = toProfessorId;
+  const { data } = await api.get("/student-reschedules/options", {
     params,
   });
   return data; // { options: [...] }
