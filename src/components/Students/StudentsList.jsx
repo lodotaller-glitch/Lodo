@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import StudentsTable from "@/components/Students/StudentsTable";
 import Pagination from "@/components/Common/Pagination";
 import { fetchStudents } from "@/functions/request/students";
+import { useAuth } from "@/context/AuthContext";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
@@ -19,8 +20,11 @@ export default function StudentsList() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const { user } = useAuth();
+  const { branchId } = useParams();
+
   const params = useMemo(
-    () => ({ q, page, limit, state: stateFilter }),
+    () => ({ q, page, limit, state: stateFilter, branch: branchId }),
     [q, page, limit, stateFilter]
   );
 
@@ -50,10 +54,10 @@ export default function StudentsList() {
   }, [params]);
 
   function handleCreate() {
-    router.push("/students/new");
+    router.push(`/${user.branch}/students/new`);
   }
   function handleEdit(id) {
-    router.push(`/students/${id}/edit`); // tu ruta de edición existente
+    router.push(`/${user.branch}/students/${id}/edit`); // tu ruta de edición existente
   }
 
   return (

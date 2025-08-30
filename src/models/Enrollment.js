@@ -22,7 +22,7 @@ const PaymentSchema = new Schema(
       default: "no_aplica",
     },
     amount: { type: Number, min: 0 },
-    corrency: { type: String, default: "ARS" },
+    currency: { type: String, default: "ARS" },
     reference: { type: String }, // id de transferencia, recibo, etc.
     observations: { type: String },
   },
@@ -45,6 +45,10 @@ const ChosenSlotSchema = new Schema(
         message: "endMin debe ser mayor que startMin",
       },
     },
+    professor: {
+      type: mongoose.Types.ObjectId,
+      ref: "User",
+    },
   },
   { _id: false }
 );
@@ -60,6 +64,12 @@ const EnrollmentSchema = new Schema(
     professor: {
       type: mongoose.Types.ObjectId,
       ref: "User",
+      required: true,
+      index: true,
+    },
+    branch: {
+      type: mongoose.Types.ObjectId,
+      ref: "Branch",
       required: true,
       index: true,
     },
@@ -101,6 +111,8 @@ const EnrollmentSchema = new Schema(
         },
       ],
     },
+
+    maxWeeklySlots: { type: Number, enum: [1, 2], default: 1 },
 
     // Estado de la inscripción
     state: {
@@ -146,7 +158,7 @@ EnrollmentSchema.statics.validateSlotsAgainstProfessor = async function ({
     };
 
   // Para cada slot elegido, debe existir un slot igual en el schedule vigente
-  const key = (s) => `${s.dayOfWeek}-${s.startMin}-${s.endMin}`;
+  const key = (s) => `${professorId}-${s.dayOfWeek}-${s.startMin}-${s.endMin}`;
   const setSchedule = new Set(schedule.slots.map(key));
   for (const s of chosenSlots) {
     if (!setSchedule.has(key(s))) {

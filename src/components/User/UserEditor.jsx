@@ -1,5 +1,5 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function UserEditor({ userId, title = "Datos del estudiante" }) {
@@ -16,6 +16,7 @@ export default function UserEditor({ userId, title = "Datos del estudiante" }) {
   const [ok, setOk] = useState("");
 
   const router = useRouter();
+  const { branchId } = useParams();
 
   useEffect(() => {
     load();
@@ -27,7 +28,7 @@ export default function UserEditor({ userId, title = "Datos del estudiante" }) {
     setError("");
     setOk("");
     try {
-      const res = await fetch(`/api/users/${userId}`);
+      const res = await fetch(`/api/${branchId}/students/${userId}`);
       const data = await res.json();
       if (!res.ok)
         throw new Error(data?.error || "No se pudo cargar el usuario");
@@ -50,7 +51,7 @@ export default function UserEditor({ userId, title = "Datos del estudiante" }) {
     setError("");
     setOk("");
     try {
-      const res = await fetch(`/api/users/${userId}`, {
+      const res = await fetch(`/api/students/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -81,7 +82,9 @@ export default function UserEditor({ userId, title = "Datos del estudiante" }) {
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {ok && <p className="text-sm text-green-700">{ok}</p>}
-      <button onClick={() => router.push(`/students/${userId}/cambiar-horario`)}>
+      <button
+        onClick={() => router.push(`/students/${userId}/cambiar-horario`)}
+      >
         Cambiar horario
       </button>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

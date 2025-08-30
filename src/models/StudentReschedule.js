@@ -24,7 +24,7 @@ const StudentRescheduleSchema = new Schema(
       required: true,
       index: true,
     },
-    proffesor: {
+    professor: {
       type: mongoose.Types.ObjectId,
       ref: "User",
       required: true,
@@ -47,6 +47,12 @@ const StudentRescheduleSchema = new Schema(
     toProfessor: { type: mongoose.Types.ObjectId, ref: "User", required: true },
     motivo: { type: String },
     createBy: { type: mongoose.Types.ObjectId, ref: "User" },
+    branch: {
+      type: mongoose.Types.ObjectId,
+      ref: "Branch",
+      required: true,
+      index: true,
+    },
   },
   { timestamps: true }
 );

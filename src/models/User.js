@@ -1,5 +1,5 @@
 const bcrypt = require("bcryptjs");
-import { Schema, models, model } from "mongoose";
+import mongoose, { Schema, models, model } from "mongoose";
 
 export const USER_ROLES = ["admin", "professor", "networks", "student"];
 
@@ -18,6 +18,12 @@ const UserSchema = new Schema(
     state: { type: Boolean, default: true },
     capacity: { type: Number, min: 1, default: 10 },
     refreshToken: { type: String },
+    branch: {
+      type: mongoose.Types.ObjectId,
+      ref: "Branch",
+      required: true,
+      index: true,
+    },
   },
   { timestamps: true }
 );

@@ -21,7 +21,16 @@ export async function POST(req) {
   user.refreshToken = refreshToken;
   await user.save();
 
-  const res = NextResponse.json({ accessToken });
+  const res = NextResponse.json({
+    accessToken,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      branch: user.branch,
+    },
+  });
   res.cookies.set("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

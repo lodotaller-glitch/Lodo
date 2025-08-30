@@ -1,7 +1,6 @@
 import { verifyAccessToken } from "@/lib/auth";
 import { User } from "@/models";
 import { Types } from "mongoose";
-import jwt from "jsonwebtoken";
 
 export async function getUserFromRequest(req) {
   // 1) Authorization: Bearer <token>
@@ -76,167 +75,97 @@ export async function getUserFromRequest(req) {
   return null;
 }
 
-// const secretKey = process?.env?.SECRET_KEY;
+// --- helpers ---------------------------------------------------------------
+function normalizeRole(r) {
+  return String(r ?? "")
+    .trim()
+    .toLowerCase();
+}
 
-// // --- helpers ---------------------------------------------------------------
-// function normalizeRole(r) {
-//   return String(r ?? "")
-//     .trim()
-//     .toLowerCase();
-// }
+// Permite mapear sinónimos/variaciones de roles
+const ROLE_ALIASES = {
+  admin: ["admin"],
+  networks: ["networks", "network", "net"],
+  teacher: ["teacher", "profesor", "professor", "docente"],
+  satelite: ["satelite", "satellite"],
+  empleado: ["empleado", "employee"],
+  facturador: ["facturador", "billing"],
+};
 
-// function parseCookieHeader(cookieHeader, name) {
-//   if (!cookieHeader) return null;
-//   const parts = cookieHeader.split(";").map((s) => s.trim());
-//   const hit = parts.find((p) => p.startsWith(`${name}=`));
-//   return hit ? hit.split("=").slice(1).join("=") : null;
-// }
+function isOneOf(role, allowed = []) {
+  const r = normalizeRole(role);
+  const expanded = allowed.flatMap(
+    (x) => ROLE_ALIASES[normalizeRole(x)] ?? [normalizeRole(x)]
+  );
+  return expanded.includes(r);
+}
 
-// function getCookieValue(req, name = "user") {
-//   try {
-//     // NextRequest (App Router / Middleware)
-//     const c = req?.cookies?.get?.(name);
-//     if (!c) {
-//       // Fallback a header Cookie (cuando req es Request estándar)
-//       const cookieHeader =
-//         req?.headers?.get?.("cookie") || req?.headers?.get?.("Cookie");
-//       return parseCookieHeader(cookieHeader, name);
-//     }
-//     // Puede venir como string o como { name, value }
-//     return typeof c === "string" ? c : c?.value ?? null;
-//   } catch {
-//     const cookieHeader =
-//       req?.headers?.get?.("cookie") || req?.headers?.get?.("Cookie");
-//     return parseCookieHeader(cookieHeader, name);
-//   }
-// }
+/** Acceso tipo "admin" (o "networks"), con opción `noNet` para exigir sólo admin. */
+export async function accesAdmin(req, noNet = false) {
+  try {
+    const u = await getUserFromRequest(req);
+    if (!u) return false;
+    if (noNet) return isOneOf(u.role, ["admin"]);
+    return isOneOf(u.role, ["admin", "networks"]);
+  } catch {
+    return false;
+  }
+}
 
-// function decodeTokenFromReq(req, cookieName = "user") {
-//   if (!secretKey) return null;
-//   const token = getCookieValue(req, cookieName);
-//   if (!token) return null;
-//   try {
-//     return jwt.verify(token, secretKey); // devuelve payload
-//   } catch {
-//     return null;
-//   }
-// }
+/** Acceso tipo empleados: admin | teacher | networks */
+export async function accesEmployee(req) {
+  try {
+    const u = await getUserFromRequest(req);
+    if (!u) return false;
+    return isOneOf(u.role, ["admin", "teacher", "networks"]);
+  } catch {
+    return false;
+  }
+}
 
-// function roleFromPayload(payload) {
-//   return (
-//     payload?.typeUser ?? // tu campo más usado
-//     payload?.role ??
-//     payload?.user?.role ??
-//     null
-//   );
-// }
+/** Acceso satélite: admin | satelite */
+export async function accesSatelite(req) {
+  try {
+    const u = await getUserFromRequest(req);
+    if (!u) return false;
+    return isOneOf(u.role, ["admin", "satelite"]);
+  } catch {
+    return false;
+  }
+}
 
-// // Permite mapear sinónimos/variaciones de roles
-// const ROLE_ALIASES = {
-//   admin: ["admin"],
-//   networks: ["networks", "network", "net"],
-//   teacher: ["teacher", "profesor", "professor", "docente"],
-//   satelite: ["satelite", "satellite"],
-//   empleado: ["empleado", "employee"],
-//   facturador: ["facturador", "billing"],
-// };
+/** Acceso amplio: admin | satelite | empleado | facturador */
+export async function accesAll(req) {
+  try {
+    const u = await getUserFromRequest(req);
+    if (!u) return false;
+    return isOneOf(u.role, ["admin", "satelite", "empleado", "facturador"]);
+  } catch {
+    return false;
+  }
+}
 
-// function isOneOf(role, allowed = []) {
-//   const r = normalizeRole(role);
-//   const expanded = allowed.flatMap(
-//     (x) => ROLE_ALIASES[normalizeRole(x)] ?? [normalizeRole(x)]
-//   );
-//   return expanded.includes(r);
-// }
+// Helpers opcionales para lanzar 401/403 si querés cortar la request
+export async function requireAcces(checkFn, req) {
+  const ok = checkFn(req);
+  if (!ok) {
+    const err = new Error("No autorizado");
+    err.status = 403;
+    throw err;
+  }
+}
 
-// // --- API pública -----------------------------------------------------------
-// /**
-//  * Devuelve info básica del usuario a partir del JWT en cookie `user`.
-//  * { id, role, email?, name?, raw? } | null
-//  */
-// export function getUserFromRequest(req) {
-//   const payload = decodeTokenFromReq(req, "user");
-//   if (!payload) return null;
-
-//   const id =
-//     payload?.id || payload?.sub || payload?.userId || payload?._id || null;
-//   const role = roleFromPayload(payload);
-
-//   return {
-//     id: id ? String(id) : null,
-//     role: normalizeRole(role),
-//     email: payload?.email ?? payload?.user?.email ?? null,
-//     name: payload?.name ?? payload?.user?.name ?? null,
-//     raw: payload,
-//   };
-// }
-
-// /** Acceso tipo "admin" (o "networks"), con opción `noNet` para exigir sólo admin. */
-// export function accesAdmin(req, noNet = false) {
-//   try {
-//     const u = getUserFromRequest(req);
-//     if (!u) return false;
-//     if (noNet) return isOneOf(u.role, ["admin"]);
-//     return isOneOf(u.role, ["admin", "networks"]);
-//   } catch {
-//     return false;
-//   }
-// }
-
-// /** Acceso tipo empleados: admin | teacher | networks */
-// export function accesEmployee(req) {
-//   try {
-//     const u = getUserFromRequest(req);
-//     if (!u) return false;
-//     return isOneOf(u.role, ["admin", "teacher", "networks"]);
-//   } catch {
-//     return false;
-//   }
-// }
-
-// /** Acceso satélite: admin | satelite */
-// export function accesSatelite(req) {
-//   try {
-//     const u = getUserFromRequest(req);
-//     if (!u) return false;
-//     return isOneOf(u.role, ["admin", "satelite"]);
-//   } catch {
-//     return false;
-//   }
-// }
-
-// /** Acceso amplio: admin | satelite | empleado | facturador */
-// export function accesAll(req) {
-//   try {
-//     const u = getUserFromRequest(req);
-//     if (!u) return false;
-//     return isOneOf(u.role, ["admin", "satelite", "empleado", "facturador"]);
-//   } catch {
-//     return false;
-//   }
-// }
-
-// // Helpers opcionales para lanzar 401/403 si querés cortar la request
-// export function requireAcces(checkFn, req) {
-//   const ok = checkFn(req);
-//   if (!ok) {
-//     const err = new Error("No autorizado");
-//     err.status = 403;
-//     throw err;
-//   }
-// }
-
-// export function requireRole(req, roles = []) {
-//   const u = getUserFromRequest(req);
-//   if (!u) {
-//     const err = new Error("No autenticado");
-//     err.status = 401;
-//     throw err;
-//   }
-//   if (!isOneOf(u.role, roles)) {
-//     const err = new Error("No autorizado");
-//     err.status = 403;
-//     throw err;
-//   }
-//   return u;
-// }
+export async function requireRole(req, roles = []) {
+  const u = await getUserFromRequest(req);
+  if (!u) {
+    const err = new Error("No autenticado");
+    err.status = 401;
+    throw err;
+  }
+  if (!isOneOf(u.role, roles)) {
+    const err = new Error("No autorizado");
+    err.status = 403;
+    throw err;
+  }
+  return u;
+}

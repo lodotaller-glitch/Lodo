@@ -32,12 +32,16 @@ export default function EnrollmentManagerById({
     [studentId]
   );
 
+  const { branchId } = useParams();
+
   async function load() {
     if (!canLoad) return;
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/enrollments/by-student/${studentId}`);
+      const res = await fetch(
+        `/api/${branchId}/enrollments/by-student/${studentId}`
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "No se pudo cargar");
       const arr = data.enrollments || [];
@@ -68,8 +72,8 @@ export default function EnrollmentManagerById({
 
   async function toggleAssign(enrollmentId, assigned) {
     const endpoint = assigned
-      ? "/api/enrollments/unassign"
-      : "/api/enrollments/assigned";
+      ? `/api/${branchId}/enrollments/unassign`
+      : `/api/${branchId}/enrollments/assigned`;
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -88,7 +92,7 @@ export default function EnrollmentManagerById({
     if (!draft) return;
     setSavingPay((s) => ({ ...s, [enrollmentId]: true }));
     try {
-      const res = await fetch("/api/enrollments/pay", {
+      const res = await fetch(`/api/${branchId}/enrollments/pay`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enrollmentId, ...draft }),
@@ -104,7 +108,6 @@ export default function EnrollmentManagerById({
   }
 
   console.log(items, "items");
-  
 
   return (
     <section className="space-y-4">

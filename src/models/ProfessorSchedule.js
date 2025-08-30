@@ -29,9 +29,20 @@ const TimeSlotSchema = new Schema(
 
 const professorScheduleSchema = new Schema(
   {
-    professor: { type: mongoose.Types.ObjectId, ref: "User", required: true, index: true },
+    professor: {
+      type: mongoose.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     effectiveFrom: { type: Date, required: true, index: true }, // típicamente primer día del mes (UTC a las 00:00)
     effectiveTo: { type: Date, default: null, index: true }, // null = vigente hasta nuevo aviso
+    branch: {
+      type: mongoose.Types.ObjectId,
+      ref: "Branch",
+      required: true,
+      index: true,
+    },
     slots: {
       type: [TimeSlotSchema],
       validate: [
@@ -66,7 +77,10 @@ professorScheduleSchema.index(
 );
 
 // Método helper: devuelve los slots vigentes para una fecha dada
-professorScheduleSchema.statics.findActiveForDate = async function (professorId, date) {
+professorScheduleSchema.statics.findActiveForDate = async function (
+  professorId,
+  date
+) {
   return this.findOne({
     professor: professorId,
     effectiveFrom: { $lte: date },
@@ -74,4 +88,5 @@ professorScheduleSchema.statics.findActiveForDate = async function (professorId,
   }).lean();
 };
 
-export default models.professorSchedule || model("professorSchedule", professorScheduleSchema);
+export default models.professorSchedule ||
+  model("professorSchedule", professorScheduleSchema);

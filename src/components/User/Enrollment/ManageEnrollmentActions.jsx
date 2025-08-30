@@ -6,6 +6,7 @@ import {
   updateEnrollmentSlots,
   upsertNextMonthEnrollment,
 } from "@/functions/request/enrollments";
+import { useParams } from "next/navigation";
 
 export default function ManageEnrollmentActions({ enrollment, onChanged }) {
   const [tab, setTab] = useState("mes"); // mes | siguiente | unica
@@ -22,25 +23,25 @@ export default function ManageEnrollmentActions({ enrollment, onChanged }) {
     [enrollment.month]
   );
 
+  const { branchId } = useParams();
+
   console.log(enrollment);
   console.log(slotsMes);
-  
-  
 
   async function saveMes() {
     console.log("hola");
-    
+
     setSaving(true);
     setError("");
     try {
       console.log("Saving current month slots", slotsMes);
       console.log(enrollment._id);
-      
-      
+
       await updateEnrollmentSlots(
         enrollment._id,
         slotsMes,
-        /*assignNow*/ enrollment.assigned
+        enrollment.assigned,
+        branchId
       );
       onChanged?.();
     } catch (e) {
@@ -61,6 +62,7 @@ export default function ManageEnrollmentActions({ enrollment, onChanged }) {
         month: monthNext,
         chosenSlots: slotsNext,
         assignNow: false,
+        branchId,
       });
       onChanged?.();
     } catch (e) {

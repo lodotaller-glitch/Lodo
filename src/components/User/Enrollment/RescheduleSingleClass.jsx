@@ -5,6 +5,7 @@ import {
   getRescheduleOptions,
   createOrUpdateReschedule,
 } from "@/functions/request/enrollments";
+import { useParams } from "next/navigation";
 
 export default function RescheduleSingleClass({ enrollment, onDone }) {
   const [occurrences, setOccurrences] = useState([]);
@@ -13,6 +14,7 @@ export default function RescheduleSingleClass({ enrollment, onDone }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { branchId } = useParams();
 
   useEffect(() => {
     if (!enrollment?._id) return;
@@ -59,6 +61,7 @@ export default function RescheduleSingleClass({ enrollment, onDone }) {
         toDateISO: opt.to,
         slotTo: opt.slotTo,
         motivo: "Cambio desde editor",
+        branchId,
       });
       onDone?.();
     } catch (e) {

@@ -28,30 +28,36 @@ export default function Header() {
   const [open, setOpen] = useState(false);
 
   const links = useMemo(() => {
-    const common = [{ href: "/", label: "Inicio" }];
+    const common = [{ href: `/${user?.branch}`, label: "Inicio" }];
     if (!user) return common;
 
     switch (user.role) {
       case "admin":
         return [
           ...common,
-          { href: "/students", label: "Estudiantes" },
-          { href: "/professor", label: "Profesores" },
-          { href: "/networks", label: "Redes" },
+          { href: `/${user.branch}/students`, label: "Estudiantes" },
+          { href: `/${user.branch}/professors`, label: "Profesores" },
+          { href: `/${user.branch}/networks`, label: "Redes" },
         ];
       case "networks":
         return [
           ...common,
-          { href: "/students/new", label: "Nuevo Estudiante" },
-          { href: "/asignaciones", label: "Asignaciones" },
+          { href: `/${user.branch}/students/new`, label: "Nuevo Estudiante" },
+          { href: `/${user.branch}/asignaciones`, label: "Asignaciones" },
         ];
       case "professor":
         return [
           ...common,
-          { href: "/calendario/profesor", label: "Mi Calendario" },
+          {
+            href: `/${user.branch}/calendario/profesor`,
+            label: "Mi Calendario",
+          },
         ];
       case "student":
-        return [...common, { href: "/mi-calendario", label: "Mis Clases" }];
+        return [
+          ...common,
+          { href: `/${user.branch}/mi-calendario`, label: "Mis Clases" },
+        ];
       default:
         return common;
     }
@@ -66,7 +72,10 @@ export default function Header() {
         <div className="h-16 flex items-center justify-between gap-4">
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <Link href="/" className="inline-flex items-center gap-2">
+            <Link
+              href={`/${user?.branch}`}
+              className="inline-flex items-center gap-2"
+            >
               <span
                 className="inline-block w-8 h-8 rounded-xl"
                 style={{ background: BRAND.soft }}

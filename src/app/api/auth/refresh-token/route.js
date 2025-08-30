@@ -27,13 +27,14 @@ export async function POST(req) {
     email: user.email,
     role: user.role,
     state: user.state,
+    branch: user.branch,
     capacity: user.capacity,
   };
 
   // Mete los datos en el JWT (claims)
   const accessToken = signAccessToken({
-    sub: publicUser.id,           // estándar JWT
-    ...publicUser,                // name, email, role, state, capacity
+    sub: publicUser.id, // estándar JWT
+    ...publicUser, // name, email, role, state, capacity
   });
 
   // Opcional y práctico: devolver también el usuario junto al token

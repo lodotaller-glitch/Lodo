@@ -1,7 +1,7 @@
 // components/calendar/RoleCalendar.jsx
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import {
@@ -61,34 +61,6 @@ const rbCalendarEsMessages = {
   showMore: (total) => `+ Ver más (${total})`,
 };
 
-/**
- * RoleCalendar — Calendario reutilizable según rol
- *
- * Props:
- * - role?: 'admin' | 'professor' | 'student' (si no se pasa, se toma de useAuth())
- * - monthDate?: Date (por defecto hoy)
- * - onMonthChange?: (date: Date) => void
- * - professorId?: string (para rol professor; si no se pasa, usa user.id)
- * - studentId?: string (para rol student; si no se pasa, usa user.id)
- * - fetchUrlOverride?: string (reemplaza el endpoint por defecto)
- * - onEventClick?: (event) => void (override de navegación por defecto)
- * - showFilters?: boolean (admin/professor true por defecto; student false)
- * - extraParams?: Record<string,string|number|boolean> (se agregan al query)
- *
- * Convención de eventos recibidos del API (resource):
- * {
- *   start: ISO,
- *   end: ISO,
- *   title: string,
- *   professorId: string,
- *   professorName: string,
- *   status: 'available' | 'full',
- *   capacityLeft?: number,
- *   slotKey?: string,
- *   // opcionales para navegación
- *   enrollmentId?: string,
- * }
- */
 export default function RoleCalendar({
   role: roleProp,
   monthDate: monthDateProp,
@@ -132,7 +104,7 @@ export default function RoleCalendar({
     if (fetchUrlOverride) return fetchUrlOverride;
     switch (role) {
       case "admin":
-        return "/api/calendar"; // year, month, professorIds?
+        return `/api/${user.branch}/calendar`; // year, month, professorIds?
       case "professor":
         return "/api/calendar/professor"; // year, month, professorId
       case "student":

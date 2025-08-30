@@ -4,6 +4,7 @@ import {
   getProfessorSlots,
   getProfessorSlotsForMonth,
 } from "@/functions/request/enrollments";
+import { useParams } from "next/navigation";
 
 const DOW = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const BRAND = { main: "#A08775", soft: "#DDD7C9" };
@@ -25,12 +26,14 @@ export default function SlotPicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const {branchId} = useParams();
+
   useEffect(() => {
     if (!year || !month) return;
     let alive = true;
     setLoading(true);
     setError("");
-    getProfessorSlots( year, month)
+    getProfessorSlots(year, month, branchId)
       .then(({ slots }) => {
         if (alive) setSlots(slots || []);
       })
@@ -47,17 +50,26 @@ export default function SlotPicker({
   }, [professorId, year, month]);
 
   const selectedKeys = useMemo(
-    () => new Set(value.map((k) => `${k.dayOfWeek}-${k.startMin}-${k.endMin}`)),
+    () =>
+      new Set(
+        value.map(
+          (k) =>
+            `${k.professorId || professorId}-${k.dayOfWeek}-${k.startMin}-${
+              k.endMin
+            }`
+        )
+      ),
     [value]
   );
 
   function toggle(slot) {
     console.log(slot, "toggle slot");
-    
-    const key = `${slot.dayOfWeek}-${slot.startMin}-${slot.endMin}`;
+
+    const key = `${slot.professorId}-${slot.dayOfWeek}-${slot.startMin}-${slot.endMin}`;
     const arr = [...value];
     const idx = arr.findIndex(
-      (s) => `${s.dayOfWeek}-${s.startMin}-${s.endMin}` === key
+      (s) =>
+        `${slot.professorId}-${s.dayOfWeek}-${s.startMin}-${s.endMin}` === key
     );
     if (idx >= 0) {
       arr.splice(idx, 1);
@@ -67,6 +79,7 @@ export default function SlotPicker({
     }
     onChange?.(arr);
   }
+  console.log(value);
 
   return (
     <div className="space-y-2">
@@ -74,7 +87,7 @@ export default function SlotPicker({
       {loading && <p className="text-sm text-gray-600">Cargando horarios…</p>}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {slots.map((s, i) => {
-          const key = `${s.dayOfWeek}-${s.startMin}-${s.endMin}`;
+          const key = `${s.professorId}-${s.dayOfWeek}-${s.startMin}-${s.endMin}`;
           const active = selectedKeys.has(key);
           return (
             <button
@@ -89,7 +102,8 @@ export default function SlotPicker({
               }}
             >
               <div className="text-sm font-medium">
-                {DOW[s.dayOfWeek]} {strMin(s.startMin)}–{strMin(s.endMin)}
+                {s.professorName} - {DOW[s.dayOfWeek]} {strMin(s.startMin)}–
+                {strMin(s.endMin)}
               </div>
               <div className="text-xs opacity-80">
                 Click para {active ? "quitar" : "elegir"}
@@ -99,7 +113,8 @@ export default function SlotPicker({
         })}
         {!loading && slots.length === 0 && (
           <div className="text-sm text-gray-600">
-            Sin franjas configuradas para el mes.
+            Sin franjas configuradas para el mes pero deben ser del mismo
+            profesor.
           </div>
         )}
       </div>
