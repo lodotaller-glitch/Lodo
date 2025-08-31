@@ -97,6 +97,7 @@ export async function createOrUpdateReschedule({
   motivo,
   branchId,
 }) {
+  
   const { data } = await api.post(
     `/${branchId}/enrollments/student-reschedules`,
     {

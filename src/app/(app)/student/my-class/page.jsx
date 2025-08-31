@@ -1,141 +1,99 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState, useRef, useEffect, use } from "react";
+import { useState, use } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { format } from "date-fns";
+import es from "date-fns/locale/es";
 
-export default function MiClasePage({ searchParams }) {
-  const { start, profesorId } = use(searchParams);
+const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
-  const [qrValue, setQrValue] = useState("");
+export default function MyClassPage({ searchParams }) {
+  const { start, professorId } = use(searchParams);
   const { user } = useAuth();
+  const [message, setMessage] = useState("");
+  const [code, setCode] = useState("");
   const router = useRouter();
-  const videoRef = useRef(null);
-  const scanRef = useRef(null);
-  const [scanning, setScanning] = useState(false);
 
-  useEffect(() => {
-    return () => stopCamera();
-  }, []);
+  const startDate = start ? new Date(start) : null;
 
-  async function handleFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!("BarcodeDetector" in window)) {
-      alert("BarcodeDetector no soportado");
-      return;
-    }
+  async function mark() {
+    if (!user) return;
     try {
-      const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
-      const bitmap = await createImageBitmap(file);
-      const codes = await detector.detect(bitmap);
-      if (codes[0]) {
-        setQrValue(codes[0].rawValue || "");
-        // TODO: enviar asistencia al servidor
-      } else {
-        alert("No se detectó código");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error leyendo QR");
-    }
-  }
-
-  async function startCamera() {
-    if (!("BarcodeDetector" in window)) {
-      alert("BarcodeDetector no soportado");
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+      const res = await fetch(`/api/${user.branch}/attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: user.id,
+          professorId,
+          date: start,
+          code,
+        }),
       });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setScanning(true);
-      scan();
-    } catch (err) {
-      console.error(err);
-      alert("No se pudo abrir la cámara");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "No se pudo marcar");
+      setMessage("Asistencia registrada");
+    } catch (e) {
+      setMessage(e.message);
     }
-  }
-
-  async function scan() {
-    if (!videoRef.current) return;
-    const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
-    try {
-      const codes = await detector.detect(videoRef.current);
-      if (codes[0]) {
-        setQrValue(codes[0].rawValue || "");
-        stopCamera();
-        // TODO: enviar asistencia al servidor
-        return;
-      }
-    } catch (err) {
-      console.error(err);
-    }
-    scanRef.current = requestAnimationFrame(scan);
-  }
-
-  function stopCamera() {
-    setScanning(false);
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach((t) => t.stop());
-      videoRef.current.srcObject = null;
-    }
-    if (scanRef.current) cancelAnimationFrame(scanRef.current);
   }
 
   function handleReschedule() {
-    if (user && start && profesorId) {
+    console.log(user, start, professorId);
+
+    if (user && start && professorId) {
+      console.log("Hola");
       router.push(
         `/student/my-class/reschedule?start=${encodeURIComponent(
           start
-        )}&profesorId=${profesorId}`
+        )}&profesorId=${professorId}`
       );
     }
   }
 
   return (
-    <main className="max-w-md mx-auto p-6 space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Clase</h1>
-        {start && (
-          <p className="text-sm text-gray-600">
-            {new Date(start).toLocaleString()}
-          </p>
-        )}
-      </div>
-
-      <section className="bg-white p-4 rounded-2xl shadow space-y-3">
-        <h2 className="font-medium">Marcar asistencia</h2>
+    <main className="p-4 space-y-6">
+      <h1 className="text-xl font-semibold" style={{ color: BRAND.main }}>
+        Mi clase
+      </h1>
+      {startDate && (
+        <p className="text-sm" style={{ color: BRAND.text }}>
+          {format(startDate, "PPPP p", { locale: es })}
+        </p>
+      )}
+      <section className="bg-white rounded-2xl shadow p-4 space-y-4">
+        <p className="text-sm" style={{ color: BRAND.text }}>
+          Escanea el código QR entregado por tu profesor o ingresá el código
+          manualmente para registrar tu asistencia.
+        </p>
         <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handleFile}
+          className="border rounded-lg px-3 py-2 w-full"
+          placeholder="Código QR"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          style={{ borderColor: BRAND.soft }}
         />
         <button
-          type="button"
-          onClick={startCamera}
-          className="px-3 py-2 rounded-xl text-white"
-          style={{ background: "#A08775" }}
+          // onClick={mark}
+          className="px-4 py-2 rounded-xl text-white"
+          style={{ background: BRAND.main }}
         >
-          Usar cámara
+          Marcar asistencia
         </button>
-        {scanning && <video ref={videoRef} className="w-full aspect-square" />}
-        {qrValue && <p className="text-sm">Código: {qrValue}</p>}
+        {message && (
+          <p className="text-sm" style={{ color: BRAND.main }}>
+            {message}
+          </p>
+        )}
       </section>
-
-      <button
-        onClick={handleReschedule}
-        className="px-4 py-2 rounded-xl text-white"
-        style={{ background: "#A08775" }}
-      >
-        Reprogramar clase
-      </button>
+      {user && (
+        <button
+          onClick={handleReschedule}
+          className="px-4 py-2 rounded-xl inline-block text-white"
+          style={{ background: BRAND.main }}
+        >
+          Reprogramar clase
+        </button>
+      )}
     </main>
   );
 }

@@ -28,7 +28,7 @@ export async function GET(_req, { params }) {
 export async function PUT(req, { params }) {
   try {
     await dbConnect();
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     const { name, email, role, state, capacity } = body || {};
 

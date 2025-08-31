@@ -79,13 +79,11 @@ export default function ReprogramarClasePage({ searchParams }) {
     try {
       setSaving(true);
       setError("");
-      console.log(opt);
-
       await createOrUpdateReschedule({
         enrollmentId,
         fromDateISO: new Date(start).toISOString(),
         toProfessorId: opt.professorId,
-        slotTo: opt.slot,
+        slotTo: opt.slotTo,
         branchId: user?.branch,
       });
       // router.push(`/${user?.branch}/mi-calendario`);
@@ -96,7 +94,6 @@ export default function ReprogramarClasePage({ searchParams }) {
       setSaving(false);
     }
   }
-  console.log(options);
 
   if (loading) return <main className="p-6">Cargando…</main>;
 

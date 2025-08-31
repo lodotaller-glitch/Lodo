@@ -228,7 +228,7 @@ export default function RoleCalendar({
       const startISO = new Date(r.start).toISOString();
       if (role === "admin") {
         router.push(
-          `/clases/detalle?profesorId=${
+          `/clases/detalle?professorId=${
             r.professorId
           }&start=${encodeURIComponent(startISO)}&slot=${encodeURIComponent(
             r.slotKey || ""
@@ -243,7 +243,7 @@ export default function RoleCalendar({
       } else {
         // student
         router.push(
-          `/student/my-class?start=${encodeURIComponent(startISO)}&profesorId=${
+          `/student/my-class?start=${encodeURIComponent(startISO)}&professorId=${
             r.professorId
           }`
         );
