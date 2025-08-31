@@ -1,11 +1,10 @@
 "use client";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, use } from "react";
 import { useAuth } from "@/context/AuthContext";
 
-export default function MiClasePage() {
-  const search = useSearchParams();
-  const start = search.get("start");
+export default function MiClasePage({ searchParams }) {
+  const { start } = use(searchParams);
   const [qrValue, setQrValue] = useState("");
   const { user } = useAuth();
   const router = useRouter();

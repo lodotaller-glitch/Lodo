@@ -1,12 +1,10 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { use } from "react";
 import { useState } from "react";
 
-export default function ProfessorClassPage() {
-  const params = useSearchParams();
-  const start = params.get("start");
-  const slot = params.get("slot");
+export default function ProfessorClassPage({ searchParams }) {
+  const { start, slot } = use(searchParams);
 
   const [students, setStudents] = useState([
     { id: "1", name: "Alumno 1", present: false },
@@ -22,7 +20,10 @@ export default function ProfessorClassPage() {
   function addStudent() {
     const name = prompt("Nombre del estudiante");
     if (name)
-      setStudents((arr) => [...arr, { id: String(Date.now()), name, present: false }]);
+      setStudents((arr) => [
+        ...arr,
+        { id: String(Date.now()), name, present: false },
+      ]);
   }
 
   function removeStudent(id) {

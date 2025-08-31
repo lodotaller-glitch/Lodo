@@ -1,6 +1,6 @@
 "use client";
-import { useSearchParams, useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
 import {
   fetchEnrollmentsByStudent,
   fetchRescheduleOptions,
@@ -11,7 +11,6 @@ import {
   getEnrollmentOccurrences,
   getRescheduleOptions,
 } from "@/functions/request/enrollments";
-import { formatPlus3hAR, formatSlotPlusHours } from "@/functions/date";
 
 import { addHours, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
@@ -23,14 +22,9 @@ const fmt = (d, pattern = "EEE d/MM HH:mm") =>
     locale: es,
   });
 
-export default function ReprogramarClasePage() {
-  const search = useSearchParams();
+export default function ReprogramarClasePage({ searchParams }) {
   const { user } = useAuth();
-  const [branchId, setBranchId] = useState(user?.branch || null);
-  const [studentId, setStudentId] = useState(user?._id || null);
-  const router = useRouter();
-  const start = search.get("start");
-  const profesorId = search.get("profesorId");
+  const { start, profesorId } = use(searchParams);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
