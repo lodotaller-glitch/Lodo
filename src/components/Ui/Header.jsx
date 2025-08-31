@@ -51,10 +51,7 @@ export default function Header() {
         return [
           ...common,
           { href: `/professor`, label: "Inicio" },
-          {
-            href: `/${user.branch}/calendario/profesor`,
-            label: "Mi Calendario",
-          },
+         { href: `/professor/profile`, label: "Perfil" },
         ];
       case "student":
         return [

@@ -15,9 +15,11 @@ function strMin(min) {
 export default function EnrollmentManagerById({
   studentId: propStudentId,
   title = "Inscripciones del alumno",
+  branchId: branchIdProp,
 }) {
   const params = useParams();
   const studentId = propStudentId ?? params?.id;
+  const branchId = branchIdProp || params?.branchId;
 
   const [items, setItems] = useState([]); // enrollments
   const [error, setError] = useState("");
@@ -28,11 +30,9 @@ export default function EnrollmentManagerById({
   const [savingPay, setSavingPay] = useState({});
 
   const canLoad = useMemo(
-    () => Boolean(studentId && String(studentId).length > 0),
-    [studentId]
+    () => Boolean(studentId && String(studentId).length > 0 && branchId),
+    [studentId, branchId]
   );
-
-  const { branchId } = useParams();
 
   async function load() {
     if (!canLoad) return;
@@ -68,7 +68,7 @@ export default function EnrollmentManagerById({
 
   useEffect(() => {
     load();
-  }, [studentId]);
+  }, [studentId, branchId]);
 
   async function toggleAssign(enrollmentId, assigned) {
     const endpoint = assigned

@@ -2,7 +2,11 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export default function UserEditor({ userId, title = "Datos del estudiante" }) {
+export default function UserEditor({
+  userId,
+  title = "Datos del estudiante",
+  branchId: branchIdProp,
+}) {
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -16,7 +20,8 @@ export default function UserEditor({ userId, title = "Datos del estudiante" }) {
   const [ok, setOk] = useState("");
 
   const router = useRouter();
-  const { branchId } = useParams();
+  const params = useParams();
+  const branchId = branchIdProp || params?.branchId;
 
   useEffect(() => {
     load();
@@ -51,7 +56,7 @@ export default function UserEditor({ userId, title = "Datos del estudiante" }) {
     setError("");
     setOk("");
     try {
-      const res = await fetch(`/api/students/${userId}`, {
+      const res = await fetch(`/api/${branchId}/students/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -82,11 +87,11 @@ export default function UserEditor({ userId, title = "Datos del estudiante" }) {
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {ok && <p className="text-sm text-green-700">{ok}</p>}
-      <button
+      {/* <button
         onClick={() => router.push(`/students/${userId}/cambiar-horario`)}
       >
         Cambiar horario
-      </button>
+      </button> */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="flex flex-col">
           <span className="text-sm text-gray-600 mb-1">Nombre</span>

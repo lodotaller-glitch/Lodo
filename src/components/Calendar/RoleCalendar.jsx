@@ -236,7 +236,7 @@ export default function RoleCalendar({
         );
       } else if (role === "professor") {
         router.push(
-          `/profesor/clase?start=${encodeURIComponent(
+          `/professor/class?start=${encodeURIComponent(
             startISO
           )}&slot=${encodeURIComponent(r.slotKey || "")}`
         );
