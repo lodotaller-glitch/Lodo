@@ -1,5 +1,5 @@
 import { deleteUser, putUser } from "@/functions/request/userRequest";
-import { handleInputChange } from "@/Functions/handleChanges";
+import { handleInputChange } from "@/functions/handleChanges";
 import { useState } from "react";
 import { motion } from "framer-motion";
 

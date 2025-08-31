@@ -8,7 +8,7 @@ import {
   updateProfessorSchedule,
 } from "@/functions/request/professor";
 import CalendarSlotProfessor from "@/components/Professors/CalendarSlotProfessor";
-import { handleInputChange } from "@/Functions/handleChanges";
+import { handleInputChange } from "@/functions/handleChanges";
 
 export default function EditProfessorPage() {
   const { id, branchId } = useParams();

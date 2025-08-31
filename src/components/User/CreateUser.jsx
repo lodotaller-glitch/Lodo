@@ -1,4 +1,4 @@
-import { handleInputChange } from "@/Functions/handleChanges";
+import { handleInputChange } from "@/functions/handleChanges";
 import { signUpUser } from "@/functions/request/userRequest";
 import { motion } from "framer-motion";
 import { useState } from "react";
