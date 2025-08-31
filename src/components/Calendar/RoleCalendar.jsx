@@ -77,9 +77,9 @@ export default function RoleCalendar({
 
   const role = roleProp || user?.role || null;
   const professorId =
-    professorIdProp || (role === "professor" ? user?.id : undefined);
+    professorIdProp || (role === "professor" ? user?._id : undefined);
   const studentId =
-    studentIdProp || (role === "student" ? user?.id : undefined);
+    studentIdProp || (role === "student" ? user?._id : undefined);
 
   const [monthDate, setMonthDate] = useState(monthDateProp || new Date());
   useEffect(() => {
@@ -91,6 +91,8 @@ export default function RoleCalendar({
   const [error, setError] = useState("");
   const [hideFull, setHideFull] = useState(false);
   const [selectedProfIds, setSelectedProfIds] = useState([]); // para admin
+
+  console.log(events);
 
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth() + 1;
@@ -241,7 +243,7 @@ export default function RoleCalendar({
       } else {
         // student
         router.push(
-          `/mi-clase?start=${encodeURIComponent(startISO)}&profesorId=${
+          `/student/my-class?start=${encodeURIComponent(startISO)}&profesorId=${
             r.professorId
           }`
         );
@@ -361,6 +363,7 @@ export default function RoleCalendar({
         events={filteredEvents}
         startAccessor="start"
         endAccessor="end"
+        date={monthDate}
         style={{
           height: 720,
           background: "white",

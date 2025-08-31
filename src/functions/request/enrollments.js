@@ -92,6 +92,7 @@ export async function createOrUpdateReschedule({
   enrollmentId,
   fromDateISO,
   toDateISO,
+  toProfessorId,
   slotTo,
   motivo,
   branchId,
@@ -102,6 +103,7 @@ export async function createOrUpdateReschedule({
       enrollmentId,
       fromDate: fromDateISO,
       toDate: toDateISO,
+      toProfessorId,
       slotTo,
       motivo,
     }

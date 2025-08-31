@@ -16,9 +16,25 @@ export default function LoginPage() {
   async function onSubmit(e) {
     e.preventDefault();
     try {
-      const res = await api.post("/auth/login", { email, password });
-      setAccessToken(res.data.accessToken);
-      router.push("/" + res.data.user.branch);
+      const { data } = await api.post("/auth/login", { email, password });
+      setAccessToken(data.accessToken);
+      const { user } = data;
+      switch (user.role) {
+        case "admin":
+          router.push("/branches");
+          break;
+        case "student":
+          router.push("/student");
+          break;
+        case "professor":
+          router.push("/professor");
+          break;
+        case "network":
+          router.push("/network");
+          break;
+        default:
+          break;
+      }
     } catch {
       alert("Credenciales inválidas");
     }

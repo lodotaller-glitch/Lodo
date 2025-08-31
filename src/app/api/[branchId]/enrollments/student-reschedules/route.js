@@ -65,6 +65,7 @@ export async function POST(req, { params }) {
     const toProfessorId = body.toProfessorId || body.professorId || null;
 
     const { branchId } = await params;
+    console.log(enrollmentId, fromDate, slotTo);
 
     if (!enrollmentId || !fromDate || !slotTo) {
       return NR.json({ error: "Faltan parámetros" }, { status: 400 });

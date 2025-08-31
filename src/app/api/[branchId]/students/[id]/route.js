@@ -30,7 +30,7 @@ export async function PUT(req, { params }) {
     await dbConnect();
     const { id } = params;
     const body = await req.json();
-    const { name, email, role, state, capacity } = body || {};
+    const { name, email, role, state, capacity, password } = body || {};
 
     const user = await User.findById(id);
     if (!user)
@@ -56,6 +56,7 @@ export async function PUT(req, { params }) {
     if (role !== undefined) user.role = role; // si querés, podés restringir cambios de rol
     if (state !== undefined) user.state = Boolean(state);
     if (capacity !== undefined) user.capacity = Math.max(1, Number(capacity));
+    if (password) user.passwordHash = password;
 
     await user.save();
     return NextResponse.json({ ok: true });

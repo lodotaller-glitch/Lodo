@@ -28,13 +28,14 @@ export default function Header() {
   const [open, setOpen] = useState(false);
 
   const links = useMemo(() => {
-    const common = [{ href: `/${user?.branch}`, label: "Inicio" }];
+    const common = [];
     if (!user) return common;
 
     switch (user.role) {
       case "admin":
         return [
           ...common,
+          { href: `/${user?.branch}`, label: "Inicio" },
           { href: `/${user.branch}/students`, label: "Estudiantes" },
           { href: `/${user.branch}/professors`, label: "Profesores" },
           { href: `/${user.branch}/networks`, label: "Redes" },
@@ -42,12 +43,14 @@ export default function Header() {
       case "networks":
         return [
           ...common,
+          { href: `/${user?.branch}`, label: "Inicio" },
           { href: `/${user.branch}/students/new`, label: "Nuevo Estudiante" },
           { href: `/${user.branch}/asignaciones`, label: "Asignaciones" },
         ];
       case "professor":
         return [
           ...common,
+          { href: `/professor`, label: "Inicio" },
           {
             href: `/${user.branch}/calendario/profesor`,
             label: "Mi Calendario",
@@ -56,7 +59,8 @@ export default function Header() {
       case "student":
         return [
           ...common,
-          { href: `/${user.branch}/mi-calendario`, label: "Mis Clases" },
+          { href: `/student`, label: "Inicio" },
+          { href: `/student/profile`, label: "Perfil" },
         ];
       default:
         return common;

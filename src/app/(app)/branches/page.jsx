@@ -41,7 +41,7 @@ export default function BranchListPage() {
                 <div className="text-sm text-gray-500">{b.code}</div>
               </div>
               <Link
-                href={`/branches/${b._id}`}
+                href={`/${b._id}`}
                 className="ml-auto text-blue-600"
               >
                 Open

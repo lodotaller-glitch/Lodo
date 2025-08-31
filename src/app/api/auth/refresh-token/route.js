@@ -22,7 +22,7 @@ export async function POST(req) {
 
   // Campos públicos que te sirven luego (no incluir nada sensible)
   const publicUser = {
-    id: user._id.toString(),
+    _id: user._id.toString(),
     name: user.name,
     email: user.email,
     role: user.role,

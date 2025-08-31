@@ -14,8 +14,10 @@ export async function fetchAllProfessorsMonthEvents({ year, month }) {
   return data; // { events }
 }
 
-export async function fetchEnrollmentsByStudent(studentId) {
-  const { data } = await api.get(`/enrollments/by-student/${studentId}`);
+export async function fetchEnrollmentsByStudent(studentId, branchId) {
+  const { data } = await api.get(
+    `${branchId}/enrollments/by-student/${studentId}`
+  );
   return data; // { enrollments }
 }
 
@@ -69,10 +71,11 @@ export async function fetchRescheduleOptions({
   enrollmentId,
   fromDateISO,
   toProfessorId,
+  branchId,
 }) {
   const params = { enrollmentId, from: fromDateISO };
   if (toProfessorId) params.toProfessorId = toProfessorId;
-  const { data } = await api.get("/student-reschedules/options", {
+  const { data } = await api.get(`${branchId}/enrollments/student-reschedules/options`, {
     params,
   });
   return data; // { options: [...] }
