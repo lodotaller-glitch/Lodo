@@ -3,7 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import Header from "@/components/Ui/Header";
 
-export const metadata = { title: "Academia", description: "Turnos y clases" };
+export const metadata = { title: "Lodo Taller", description: "Turnos y clases" };
 
 export default function RootLayout({ children }) {
   return (

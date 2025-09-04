@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
+import Image from "next/image";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
@@ -51,7 +52,7 @@ export default function Header() {
         return [
           ...common,
           { href: `/professor`, label: "Inicio" },
-         { href: `/professor/profile`, label: "Perfil" },
+          { href: `/professor/profile`, label: "Perfil" },
         ];
       case "student":
         return [
@@ -66,8 +67,8 @@ export default function Header() {
 
   return (
     <header
-      className="sticky top-0 z-40 border-b border-black/5"
-      style={{ background: BRAND.main }}
+      className="sticky top-0 z-40 border-b border-black/5 header-bg  "
+      // style={{ background: BRAND.main }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="h-16 flex items-center justify-between gap-4">
@@ -77,9 +78,12 @@ export default function Header() {
               href={`/${user?.branch}`}
               className="inline-flex items-center gap-2"
             >
-              <span
-                className="inline-block w-8 h-8 rounded-xl"
-                style={{ background: BRAND.soft }}
+              <Image
+                src={"/img/logo-3.png"}
+                width={30}
+                height={30}
+                alt=""
+                className=""
               />
               <span className="text-white font-semibold tracking-wide">
                 Academia

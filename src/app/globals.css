@@ -36,3 +36,8 @@ form {
 .select-orange {
   @apply bg-white text-black w-full p-2 rounded-xl border border-orange-300;
 }
+
+.header-bg {
+  background-image: url("/img/header-bg.png");
+  background-size: contain;
+}
