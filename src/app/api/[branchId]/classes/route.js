@@ -1,0 +1,529 @@
+// /app/api/[branchId]/classes/route.js
+import { NextResponse } from "next/server";
+import dbConnect from "@/lib/dbConnect";
+import { Enrollment, Attendance, User, StudentReschedule } from "@/models";
+
+function parseSlot(slot) {
+  const [professorId, dayOfWeek, startMin, endMin] = slot
+    .split("-")
+    .map(String);
+  return {
+    professorId,
+    dayOfWeek: Number(dayOfWeek),
+    startMin: Number(startMin),
+    endMin: Number(endMin),
+  };
+}
+
+function startOfDayUTC(d) {
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
+  );
+}
+function endOfDayUTC(d) {
+  return new Date(
+    Date.UTC(
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate(),
+      23,
+      59,
+      59,
+      999
+    )
+  );
+}
+
+export async function GET(req, { params }) {
+  try {
+    await dbConnect();
+    const { branchId } = await params;
+    const { searchParams } = new URL(req.url);
+    const start = searchParams.get("start");
+    const slot = searchParams.get("slot");
+    if (!start || !slot) {
+      return NextResponse.json({ error: "Faltan parámetros" }, { status: 400 });
+    }
+
+    const date = new Date(start);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const dayStart = startOfDayUTC(date);
+    const dayEnd = endOfDayUTC(date);
+
+    const { professorId, dayOfWeek, startMin, endMin } = parseSlot(slot);
+
+    // 1) Enrollments regulares que matchean la franja
+    const enrollments = await Enrollment.find({
+      branch: branchId,
+      professor: professorId,
+      year,
+      month,
+      $or: [{ state: "activa" }, { estado: "activa" }],
+    })
+      .select("student chosenSlots assigned asignado")
+      .populate("student", "name")
+      .lean();
+
+    // Base regulares asignados que tienen ese slot
+    const regularBase = [];
+    for (const e of enrollments) {
+      const isAssigned = e.assigned === true || e.asignado === true;
+      if (!isAssigned) continue;
+      const match = (e.chosenSlots || []).some(
+        (s) =>
+          s.dayOfWeek === dayOfWeek &&
+          s.startMin === startMin &&
+          s.endMin === endMin
+      );
+      if (match) {
+        regularBase.push({
+          id: String(e.student._id),
+          name: e.student.name,
+          enrollmentId: String(e._id),
+          origin: "regular",
+        });
+      }
+    }
+
+    // 2) Reprogramaciones OUT de esta fecha+slot+profesor
+    const resOutDocs = await StudentReschedule.find({
+      $and: [
+        {
+          $or: [
+            { fromProfessor: professorId },
+            { professor: professorId }, // compat legado
+          ],
+        },
+        { fromDate: { $gte: dayStart, $lte: dayEnd } },
+        {
+          "slotFrom.dayOfWeek": dayOfWeek,
+          "slotFrom.startMin": startMin,
+          "slotFrom.endMin": endMin,
+        },
+      ],
+    })
+      .select("enrollment student")
+      .lean();
+
+    const outEnrollmentIds = new Set(
+      resOutDocs
+        .map((r) => (r.enrollment ? String(r.enrollment) : null))
+        .filter(Boolean)
+    );
+    const outStudentIds = new Set(
+      resOutDocs
+        .map((r) => (r.student ? String(r.student) : null))
+        .filter(Boolean)
+    );
+
+    // 3) Reprogramaciones IN hacia esta fecha+slot+profesor
+    const resInDocs = await StudentReschedule.find({
+      $and: [
+        {
+          $or: [
+            { toProfessor: professorId },
+            { professor: professorId }, // compat legado
+          ],
+        },
+        { toDate: { $gte: dayStart, $lte: dayEnd } },
+        {
+          "slotTo.dayOfWeek": dayOfWeek,
+          "slotTo.startMin": startMin,
+          "slotTo.endMin": endMin,
+        },
+      ],
+    })
+      .select("enrollment student")
+      .populate("student", "name")
+      .lean();
+
+    const rescheduleIn = resInDocs.map((r) => ({
+      id: r.student ? String(r.student._id || r.student) : undefined,
+      name: r.student?.name || "Alumno",
+      enrollmentId: r.enrollment ? String(r.enrollment) : null,
+      origin: "reschedule-in",
+    }));
+
+    // 4) Regulares vigentes = base - OUT
+    const regularActive = regularBase.filter(
+      (s) => !outEnrollmentIds.has(s.enrollmentId) && !outStudentIds.has(s.id)
+    );
+
+    // 5) Asistencias (REGULAR) de todos los enrollmentIds relevantes en esta fecha
+    const allEnrollmentIds = [
+      ...new Set([
+        ...regularActive.map((s) => s.enrollmentId),
+        ...rescheduleIn
+          .map((s) => s.enrollmentId)
+          .filter((x) => x && x !== "null"),
+      ]),
+    ];
+
+    const attRegular = allEnrollmentIds.length
+      ? await Attendance.find({
+          date,
+          enrollment: { $in: allEnrollmentIds },
+          origin: { $in: [null, "regular"] },
+        })
+          .select("enrollment status removed")
+          .lean()
+      : [];
+
+    const attByEnrollment = new Map(
+      attRegular.map((a) => [String(a.enrollment), a])
+    );
+
+    // 6) Resultado de regulares (con present)
+    const resultRegular = regularActive
+      .filter((s) => !attByEnrollment.get(s.enrollmentId)?.removed)
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        enrollmentId: s.enrollmentId,
+        present: attByEnrollment.get(s.enrollmentId)?.status === "presente",
+        origin: "regular",
+      }));
+
+    // 7) Resultado de reprogramados IN (con present si hay asistencia REGULAR por enrollment)
+    const resultResIn = rescheduleIn.map((s) => ({
+      id: s.id,
+      name: s.name,
+      enrollmentId: s.enrollmentId || null,
+      present: s.enrollmentId
+        ? attByEnrollment.get(s.enrollmentId)?.status === "presente"
+        : false,
+      origin: "reschedule-in",
+    }));
+
+    // 8) AD-HOC de ese día y slot (se mantiene igual)
+    const adhocAttendances = await Attendance.find({
+      date,
+      branch: branchId,
+      professor: professorId,
+      origin: "adhoc",
+      removed: { $ne: true },
+      "slotSnapshot.dayOfWeek": dayOfWeek,
+      "slotSnapshot.startMin": startMin,
+      "slotSnapshot.endMin": endMin,
+    })
+      .select("student status")
+      .populate("student", "name")
+      .lean();
+      
+
+    const resultAdhoc = adhocAttendances.map((a) => ({
+      id: String(a.student?._id),
+      name: a.student?.name,
+      enrollmentId: null,
+      present: a.status === "presente",
+      origin: "adhoc",
+    }));
+
+    // 9) Combinar
+    return NextResponse.json({
+      students: [...resultRegular, ...resultResIn, ...resultAdhoc],
+    });
+  } catch (err) {
+    console.error("GET /classes error:", err);
+    return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
+  }
+}
+
+// ----------------------- PATCH -----------------------
+export async function PATCH(req, { params }) {
+  try {
+    await dbConnect();
+    const { branchId } = await params;
+    const {
+      enrollmentId,
+      studentId,
+      professorId,
+      start,
+      present,
+      origin,
+      slot,
+    } = await req.json();
+
+    if (!start)
+      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+    const date = new Date(start);
+
+    let slotSnapshot = null;
+    if (slot) {
+      const { dayOfWeek, startMin, endMin } = parseSlot(slot);
+      slotSnapshot = { dayOfWeek, startMin, endMin };
+    }
+
+    if (enrollmentId && (!origin || origin === "regular")) {
+      await Attendance.findOneAndUpdate(
+        { enrollment: enrollmentId, date },
+        {
+          enrollment: enrollmentId,
+          student: studentId,
+          professor: professorId,
+          branch: branchId,
+          date,
+          status: present ? "presente" : "ausente",
+          removed: false,
+          origin: "regular",
+          ...(slotSnapshot ? { slotSnapshot } : {}),
+        },
+        { upsert: true, setDefaultsOnInsert: true, runValidators: true }
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    if (origin === "adhoc" && studentId && professorId) {
+      await Attendance.findOneAndUpdate(
+        {
+          student: studentId,
+          professor: professorId,
+          branch: branchId,
+          date,
+          origin: "adhoc",
+        },
+        {
+          $set: {
+            student: studentId,
+            professor: professorId,
+            branch: branchId,
+            date,
+            status: present ? "presente" : "ausente",
+            removed: false,
+            origin: "adhoc",
+            ...(slotSnapshot ? { slotSnapshot } : {}),
+          },
+        },
+        { upsert: true, setDefaultsOnInsert: true, runValidators: true }
+      );
+      return NextResponse.json({ ok: true });
+    }
+    if (origin === "reschedule-in" && studentId && professorId) {
+      // intentar resolver enrollment si no vino
+      let targetEnrollmentId = enrollmentId || null;
+      if (!targetEnrollmentId) {
+        const y = date.getUTCFullYear();
+        const m = date.getUTCMonth() + 1;
+        const en = await Enrollment.findOne({
+          student: studentId,
+          year: y,
+          month: m,
+          $or: [{ state: "activa" }, { estado: "activa" }],
+        })
+          .select("_id")
+          .lean();
+        if (en) targetEnrollmentId = String(en._id);
+      }
+
+      if (targetEnrollmentId) {
+        // Guardamos como regular (sigue siendo una clase de la inscripción)
+        await Attendance.findOneAndUpdate(
+          { enrollment: targetEnrollmentId, date },
+          {
+            enrollment: targetEnrollmentId,
+            student: studentId,
+            professor: professorId, // puede ser otro profe (toProfessor)
+            branch: branchId,
+            date,
+            status: present ? "presente" : "ausente",
+            removed: false,
+            origin: "regular", // importante para que cuente como clase regular
+            ...(slotSnapshot ? { slotSnapshot } : {}),
+          },
+          { upsert: true, setDefaultsOnInsert: true, runValidators: true }
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      // Si no pudimos vincularla a una inscripción por algún motivo extraño,
+      // caemos a AD-HOC para no romper el flujo (opcional)
+      await Attendance.findOneAndUpdate(
+        {
+          student: studentId,
+          professor: professorId,
+          branch: branchId,
+          date,
+          origin: "adhoc",
+        },
+        {
+          $set: {
+            student: studentId,
+            professor: professorId,
+            branch: branchId,
+            date,
+            status: present ? "presente" : "ausente",
+            removed: false,
+            origin: "adhoc",
+            ...(slotSnapshot ? { slotSnapshot } : {}),
+          },
+          $unset: { enrollment: "" },
+        },
+        { upsert: true, setDefaultsOnInsert: true, runValidators: true }
+      );
+      return NextResponse.json({ ok: true, fallback: "adhoc" });
+    }
+    return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+  } catch (err) {
+    console.error("PATCH /classes error:", err);
+    return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
+  }
+}
+
+// ----------------------- DELETE -----------------------
+export async function DELETE(req, { params }) {
+  try {
+    await dbConnect();
+    const { branchId } = await params;
+    const { enrollmentId, studentId, professorId, start, origin } =
+      await req.json();
+    if (!start)
+      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+
+    const date = new Date(start);
+
+    if (enrollmentId && (!origin || origin === "regular")) {
+      await Attendance.findOneAndUpdate(
+        { enrollment: enrollmentId, date },
+        { removed: true, origin: "regular" },
+        { upsert: true, setDefaultsOnInsert: true }
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    if (origin === "adhoc" && studentId && professorId) {
+      await Attendance.findOneAndUpdate(
+        {
+          student: studentId,
+          professor: professorId,
+          branch: branchId,
+          date,
+          origin: "adhoc",
+        },
+        { removed: true },
+        { upsert: true, setDefaultsOnInsert: true }
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+  } catch (err) {
+    console.error("DELETE /classes error:", err);
+    return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
+  }
+}
+
+// ----------------------- POST -----------------------
+// Agrega alumno a la clase (si no tiene el slot, lo agrega a su Enrollment o crea uno nuevo)
+// Luego crea la asistencia del día (por defecto en "ausente"; ajusta si querés marcar presente)
+
+export async function POST(req, { params }) {
+  try {
+    await dbConnect();
+    const { branchId } = await params;
+    const { email, start, slot } = await req.json();
+    if (!email || !start || !slot) {
+      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+    }
+
+    const date = new Date(start);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const { professorId, dayOfWeek, startMin, endMin } = parseSlot(slot);
+    const slotSnapshot = { dayOfWeek, startMin, endMin }; // 👈
+
+    const student = await User.findOne({ email }).select("_id name").lean();
+    if (!student) {
+      return NextResponse.json(
+        { error: "Estudiante no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    // ¿tiene inscripción REGULAR ese mes y slot?
+    const enrollment = await Enrollment.findOne({
+      student: student._id,
+      branch: branchId,
+      professor: professorId,
+      year,
+      month,
+      $or: [{ state: "activa" }, { estado: "activa" }],
+      chosenSlots: { $elemMatch: { dayOfWeek, startMin, endMin } },
+    })
+      .select("_id student")
+      .populate("student", "name")
+      .lean();
+
+    if (enrollment) {
+      // Upsert asistencia REGULAR
+      await Attendance.findOneAndUpdate(
+        { enrollment: enrollment._id, date },
+        {
+          enrollment: enrollment._id,
+          student: enrollment.student._id,
+          professor: professorId,
+          branch: branchId,
+          date,
+          status: "ausente",
+          removed: false,
+          origin: "regular",
+          slotSnapshot,
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      return NextResponse.json({
+        student: {
+          id: String(enrollment.student._id),
+          name: enrollment.student.name,
+          enrollmentId: String(enrollment._id),
+          present: false,
+          origin: "regular",
+        },
+      });
+    }
+
+    // Si NO tiene ese slot → crear/actualizar asistencia AD-HOC (sin tocar Enrollment)
+    const attAdhoc = await Attendance.findOneAndUpdate(
+      {
+        student: student._id,
+        professor: professorId,
+        branch: branchId,
+        date,
+        origin: "adhoc",
+      },
+      {
+        $set: {
+          student: student._id,
+          professor: professorId,
+          branch: branchId,
+          date,
+          status: "ausente", // o "presente" si querés marcar llegada directa
+          removed: false,
+          origin: "adhoc",
+          slotSnapshot,
+        },
+        $unset: { enrollment: "" }, // por si algún registro viejo tenía null
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+        runValidators: true,
+      }
+    );
+
+    return NextResponse.json({
+      student: {
+        id: String(student._id),
+        name: student.name || email,
+        enrollmentId: null,
+        present: attAdhoc.status === "presente",
+        origin: "adhoc",
+      },
+    });
+  } catch (err) {
+    console.error("POST /classes error:", err);
+    return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
+  }
+}
