@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Pagination from "@/components/Common/Pagination";
 import { fetchBranchProfessors } from "@/functions/request/professor";
+import ProfessorsTable from "./ProfessorsTable";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
@@ -26,7 +27,7 @@ export default function ProfessorsList() {
 
   useEffect(() => {
     let alive = true;
-    async function load() {
+    (async () => {
       setLoading(true);
       setError("");
       try {
@@ -42,8 +43,7 @@ export default function ProfessorsList() {
       } finally {
         if (alive) setLoading(false);
       }
-    }
-    load();
+    })();
     return () => {
       alive = false;
     };
@@ -51,6 +51,9 @@ export default function ProfessorsList() {
 
   function handleCreate() {
     router.push(`/${branchId}/professors/new`);
+  }
+  function handleEdit(id) {
+    router.push(`/${branchId}/professors/${id}/edit`);
   }
 
   return (
@@ -74,36 +77,77 @@ export default function ProfessorsList() {
       </header>
 
       <div className="bg-white rounded-2xl shadow p-4 space-y-3">
-        <div className="flex flex-col md:flex-row gap-3 md:items-end md:justify-between">
-          <label className="flex-1 flex flex-col">
-            <span className="text-sm text-gray-600 mb-1">Buscar</span>
-            <input
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Nombre o email"
-              className="border rounded-lg px-3 py-2"
-            />
-          </label>
-          <label className="w-28 flex flex-col">
-            <span className="text-sm text-gray-600 mb-1">Por página</span>
-            <select
-              value={limit}
-              onChange={(e) => {
-                setLimit(Number(e.target.value));
-                setPage(1);
-              }}
-              className="border rounded-lg px-3 py-2"
-            >
-              {[10, 20, 50].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
+        {/* Card de filtros (igual a estudiantes) */}
+        <div
+          className="rounded-2xl border p-4 sm:p-5 shadow-sm"
+          style={{
+            borderColor: BRAND.soft,
+            background: `linear-gradient(180deg, ${BRAND.soft}55, #ffffff)`,
+          }}
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-evenly">
+            {/* Búsqueda + (slot vacío para mantener layout similar) */}
+            <div className="flex-1 gap-3">
+              <label className="flex flex-col">
+                <span
+                  className="text-sm mb-1"
+                  style={{ color: `${BRAND.text}CC` }}
+                >
+                  Buscar
+                </span>
+                <div className="relative">
+                  <input
+                    value={q}
+                    onChange={(e) => {
+                      setQ(e.target.value);
+                      setPage(1);
+                    }}
+                    placeholder="Nombre o email"
+                    className="w-full rounded-xl border bg-white px-3 py-2.5 pl-9 text-sm shadow-sm outline-none transition focus:ring-2"
+                    style={{ borderColor: BRAND.soft, color: BRAND.text }}
+                  />
+                  <svg
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-60"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    style={{ color: BRAND.text }}
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M12.9 14.32a8 8 0 111.414-1.414l3.39 3.39a1 1 0 01-1.414 1.415l-3.39-3.391zM14 8a6 6 0 11-12 0 6 6 0 0112 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </label>
+            </div>
+
+            {/* Límite por página */}
+            <label className="flex flex-col">
+              <span
+                className="text-sm mb-1"
+                style={{ color: `${BRAND.text}CC` }}
+              >
+                Por página
+              </span>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-xl border bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:ring-2 md:w-40"
+                style={{ borderColor: BRAND.soft, color: BRAND.text }}
+              >
+                {[10, 20, 50].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         {error && (
@@ -112,34 +156,7 @@ export default function ProfessorsList() {
           </div>
         )}
 
-        <ul className="divide-y">
-          {loading ? (
-            <li>Cargando...</li>
-          ) : (
-            items.map((p) => (
-              <li
-                key={p._id}
-                className="py-3 grid grid-cols-4 items-center gap-3"
-              >
-                <div className="col-span-2">
-                  <div className="font-medium">{p.name}</div>
-                  <div className="text-sm text-gray-500">{p.email}</div>
-                </div>
-                <div className="text-sm">Capacidad: {p.capacity ?? 10}</div>
-                <div className="ml-auto flex gap-3 justify-end">
-                  <button
-                    onClick={() =>
-                      router.push(`/${branchId}/professors/${p._id}/edit`)
-                    }
-                    className="text-blue-600"
-                  >
-                    Editar
-                  </button>
-                </div>
-              </li>
-            ))
-          )}
-        </ul>
+        <ProfessorsTable items={items} loading={loading} onEdit={handleEdit} />
 
         <Pagination
           page={page}

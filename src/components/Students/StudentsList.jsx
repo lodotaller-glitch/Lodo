@@ -100,53 +100,101 @@ export default function StudentsList({ professor = false }) {
       </header>
 
       <div className="bg-white rounded-2xl shadow p-4 space-y-3">
-        <div className="flex flex-col md:flex-row gap-3 md:items-end md:justify-between">
-          <div className="flex flex-1 gap-3">
-            <label className="flex-1 flex flex-col">
-              <span className="text-sm text-gray-600 mb-1">Buscar</span>
-              <input
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Nombre o email"
-                className="border rounded-lg px-3 py-2"
-              />
-            </label>
-            <label className="w-48 flex flex-col">
-              <span className="text-sm text-gray-600 mb-1">Estado</span>
-              <select
-                value={stateFilter}
-                onChange={(e) => {
-                  setStateFilter(e.target.value);
-                  setPage(1);
-                }}
-                className="border rounded-lg px-3 py-2"
+        <div
+          className="rounded-2xl border p-4 sm:p-5 shadow-sm"
+          style={{
+            borderColor: BRAND?.soft,
+            background: `linear-gradient(180deg, ${
+              BRAND?.soft ?? "#EEE"
+            }55, #ffffff)`,
+          }}
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            {/* Búsqueda + Estado (grid en mobile, fila en desktop) */}
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label className="sm:col-span-2 flex flex-col">
+                <span
+                  className="text-sm mb-1"
+                  style={{ color: `${BRAND?.text ?? "#111"}CC` }}
+                >
+                  Buscar
+                </span>
+                <div className="relative">
+                  <input
+                    value={q}
+                    onChange={(e) => {
+                      setQ(e.target.value);
+                      setPage(1);
+                    }}
+                    placeholder="Nombre o email"
+                    className="w-full rounded-xl border bg-white px-3 py-2.5 pl-9 text-sm shadow-sm outline-none transition focus:ring-2"
+                    style={{ borderColor: BRAND?.soft, color: BRAND?.text }}
+                  />
+                  <svg
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-60"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    style={{ color: BRAND?.text }}
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M12.9 14.32a8 8 0 111.414-1.414l3.39 3.39a1 1 0 01-1.414 1.415l-3.39-3.391zM14 8a6 6 0 11-12 0 6 6 0 0112 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </label>
+
+              <label className="flex flex-col">
+                <span
+                  className="text-sm mb-1"
+                  style={{ color: `${BRAND?.text ?? "#111"}CC` }}
+                >
+                  Estado
+                </span>
+                <select
+                  value={stateFilter}
+                  onChange={(e) => {
+                    setStateFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="rounded-xl border bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:ring-2"
+                  style={{ borderColor: BRAND?.soft, color: BRAND?.text }}
+                >
+                  <option value="all">Todos</option>
+                  <option value="active">Activos</option>
+                  <option value="inactive">Inactivos</option>
+                </select>
+              </label>
+            </div>
+
+            {/* Límite por página */}
+
+            <label className="flex flex-col">
+              <span
+                className="text-sm mb-1"
+                style={{ color: `${BRAND?.text ?? "#111"}CC` }}
               >
-                <option value="all">Todos</option>
-                <option value="active">Activos</option>
-                <option value="inactive">Inactivos</option>
+                Por página
+              </span>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-xl border bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:ring-2 md:w-40"
+                style={{ borderColor: BRAND?.soft, color: BRAND?.text }}
+              >
+                {[10, 20, 50].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
               </select>
             </label>
           </div>
-          <label className="w-28 flex flex-col">
-            <span className="text-sm text-gray-600 mb-1">Por página</span>
-            <select
-              value={limit}
-              onChange={(e) => {
-                setLimit(Number(e.target.value));
-                setPage(1);
-              }}
-              className="border rounded-lg px-3 py-2"
-            >
-              {[10, 20, 50].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
         </div>
 
         {error && (

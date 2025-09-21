@@ -297,46 +297,77 @@ export default function RoleCalendar({
     <section className="space-y-4">
       {/* Filtros / Header */}
       {showFilters && (
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div className="flex flex-wrap gap-2">
-            {role === "admin" &&
-              uniqueProfessors.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => toggleSelected(p.id)}
-                  className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 ${
-                    selectedProfIds.includes(p.id) ? "bg-white" : "bg-white/70"
-                  }`}
-                  title={p.name}
-                >
-                  <span
-                    className="inline-block w-3 h-3 rounded"
-                    style={{ background: colorForProfessor(p.id) }}
-                  />
-                  <span className="truncate max-w-[140px]">{p.name}</span>
-                </button>
-              ))}
+        <div
+          className="rounded-2xl border p-4 sm:p-5 shadow-sm space-y-4 md:space-y-0 md:flex md:items-end md:justify-between"
+          style={{
+            borderColor: BRAND.soft,
+            background: `linear-gradient(180deg, ${BRAND.soft}55, #ffffff)`,
+          }}
+        >
+          {/* Chips de profesores (scroll en mobile, wrap en desktop) */}
+          <div className="-mx-2 -mt-1 md:m-0 px-2 overflow-x-auto md:overflow-visible">
+            <div className="flex min-w-max gap-2 md:min-w-0 md:flex-wrap">
+              {role === "admin" &&
+                uniqueProfessors.map((p) => {
+                  const active = selectedProfIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => toggleSelected(p.id)}
+                      className={`group flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm whitespace-nowrap transition
+                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+                            ${active ? "shadow-sm" : "hover:shadow-sm"}`}
+                      style={{
+                        borderColor: active ? BRAND.main : BRAND.soft,
+                        background: active ? "#fff" : "#ffffffb3", // blanco 70%
+                        color: BRAND.text,
+                      }}
+                      title={p.name}
+                    >
+                      <span
+                        className="inline-block w-3 h-3 rounded shrink-0"
+                        style={{ background: colorForProfessor(p.id) }}
+                      />
+                      <span className="truncate max-w-[160px]">{p.name}</span>
+                    </button>
+                  );
+                })}
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          {/* Controles (grid en mobile, alineado en desktop) */}
+          <div className="grid w-full md:w-auto grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:items-end">
             {(role === "admin" || role === "professor") && (
-              <label className="inline-flex items-center gap-2 text-sm">
+              <label
+                className="inline-flex items-center justify-between sm:justify-start gap-3 rounded-xl border px-3 py-2 text-sm"
+                style={{
+                  borderColor: BRAND.soft,
+                  background: "#fff",
+                  color: BRAND.text,
+                }}
+              >
                 <input
                   type="checkbox"
                   checked={hideFull}
                   onChange={(e) => setHideFull(e.target.checked)}
+                  className="shrink-0"
+                  style={{ accentColor: BRAND.main }}
                 />
-                Ocultar completas
+                <span className="truncate">Ocultar completas</span>
               </label>
             )}
 
             <label className="flex flex-col">
-              <span className="text-sm" style={{ color: BRAND.text }}>
+              <span
+                className="text-sm mb-1"
+                style={{ color: `${BRAND.text}CC` }}
+              >
                 Mes
               </span>
               <input
                 type="month"
-                className="border rounded-lg px-3 py-2"
+                className="rounded-xl border bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:ring-2"
+                style={{ borderColor: BRAND.soft, color: BRAND.text }}
                 value={ymToMonthInputValue(monthDate)}
                 onChange={(e) =>
                   setMonthDate(monthInputValueToDate(e.target.value))
@@ -346,7 +377,7 @@ export default function RoleCalendar({
 
             <button
               onClick={fetchEvents}
-              className="px-4 py-2 rounded-xl text-white hover:opacity-90"
+              className="rounded-xl px-4 py-2.5 font-semibold text-white shadow-sm hover:brightness-95 active:translate-y-[1px] transition sm:w-auto w-full md:justify-self-end"
               style={{ background: BRAND.main }}
             >
               Actualizar
@@ -483,7 +514,7 @@ function CustomToolbar({
   );
 }
 
-function Legend({role}) {
+function Legend({ role }) {
   return (
     <div className="flex items-center gap-4 text-sm">
       <span className="inline-flex items-center gap-2">
