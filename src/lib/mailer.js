@@ -14,6 +14,11 @@ const APP_URL =
   process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "";
 const APP_BASE = APP_URL.replace(/\/+$/, ""); // sin slash final
 
+const HEADER_BG_URL =
+  "https://res.cloudinary.com/dx3mjnxhn/image/upload/v1758501927/sbwofxhljuqxfcywwtzl.png";
+const LOGO_URL =
+  "https://res.cloudinary.com/dx3mjnxhn/image/upload/v1758501926/eovygh8ibnshtf3zryqt.png";
+
 // Wrapper base para todos los emails
 function emailBase({
   preheader = "",
@@ -48,11 +53,19 @@ function emailBase({
                     }">
         <!-- Header -->
         <tr>
-          <td style="background:${
-            BRAND.main
-          };color:#fff;padding:16px 24px;font-weight:800;font-size:18px;letter-spacing:.2px;">
-            Taller de Cerámica
-          </td>
+           <td align="left" style="vertical-align:middle; background:${
+             BRAND.main
+           } url('${HEADER_BG_URL}') center/cover no-repeat;
+      color:#fff;padding:16px 24px;
+      font-weight:800;font-size:18px;letter-spacing:.2px;
+      height:96px;">
+          <img
+            src="${LOGO_URL}"
+            width="36" height="36" alt="Logo"
+            style="display:inline-block;border:0;outline:none;text-decoration:none;border-radius:8px;margin-right:8px;vertical-align:middle;"
+          />
+          <span style="vertical-align:middle;">Taller de Cerámica LODO</span>
+        </td>
         </tr>
         <!-- Body -->
         <tr>
@@ -106,11 +119,12 @@ export async function sendPieceReadyEmail(to, { studentName, pieceTitle }) {
     <p style="margin:0 0 10px 0;">
       ¡Buenas noticias! Tu pieza <strong>${pieceTitle}</strong> está <strong>lista</strong> para retirar.
     </p>
-    <p style="margin:0 0 0 0;">Podés pasar por el taller en tu horario habitual.</p>
-    <p style="margin:16px 0 0 0;">— Equipo del Taller</p>
+    <p style="margin:0 0 10px 0;">Podés pasar por el taller en tu horario habitual.</p>
+    <p style="margin:0 0 0 0;"><strong>Importante:</strong> tenés <strong>30 días</strong> a partir de este aviso para retirarla.</p>
+    <p style="margin:16px 0 0 0;">— Equipo Lodo Cerámica</p>
   `;
   const html = emailBase({
-    preheader: `Tu pieza "${pieceTitle}" está lista para retirar`,
+    preheader: `Tu pieza "${pieceTitle}" está lista para retirar (30 días para retirarla)`,
     heading: "¡Tu pieza está lista!",
     contentHtml,
     ctaLabel: APP_BASE ? "Ingresar al Taller" : undefined,
@@ -168,11 +182,11 @@ export async function sendNewAccountEmail(
     <p style="margin:0 0 10px 0;">¡Bienvenido/a! Ya tenés tu cuenta activa en el Taller.</p>
     ${passInfo}
     ${slotInfo}
-    <p style="margin:16px 0 0 0;">— Equipo del Taller</p>
+    <p style="margin:16px 0 0 0;">— Equipo Lodo Cerámica</p>
   `;
 
   const html = emailBase({
-    preheader: "Tu cuenta del Taller ya está activa",
+    preheader: "Tu cuenta del Taller Lodo Cerámica ya está activa",
     heading: "¡Cuenta creada con éxito!",
     contentHtml,
     ctaLabel: APP_BASE ? "Ingresar al Taller" : undefined,

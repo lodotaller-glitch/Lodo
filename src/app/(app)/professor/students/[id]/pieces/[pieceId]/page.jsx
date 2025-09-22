@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -118,7 +118,7 @@ export default function EditPiecePage() {
       });
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || "No se pudo guardar");
-      router.push(`/${branchId}/students/${studentId}/pieces`);
+      router.back();
     } catch (e) {
       setError(e.message);
     }

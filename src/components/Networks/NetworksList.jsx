@@ -4,13 +4,11 @@ import { useParams, useRouter } from "next/navigation";
 import NetworksTable from "@/components/Networks/NetworksTable";
 import Pagination from "@/components/Common/Pagination";
 import { fetchNetworks } from "@/functions/request/networks";
-import { useAuth } from "@/context/AuthContext";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
 export default function NetworksList() {
   const router = useRouter();
-  const { user } = useAuth();
   const { branchId } = useParams();
 
   const [q, setQ] = useState("");
@@ -53,10 +51,10 @@ export default function NetworksList() {
   }, [params]);
 
   function handleCreate() {
-    router.push(`/${user.branch}/networks/new`);
+    router.push(`/${branchId}/networks/new`);
   }
   function handleEdit(id) {
-    router.push(`/${user.branch}/networks/${id}/edit`);
+    router.push(`/${branchId}/networks/${id}/edit`);
   }
 
   return (

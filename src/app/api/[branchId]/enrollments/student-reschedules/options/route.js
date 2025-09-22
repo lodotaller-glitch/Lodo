@@ -35,6 +35,8 @@ export async function GET(req, { params }) {
     const windowEnd = new Date(fromDate);
     windowEnd.setUTCDate(windowEnd.getUTCDate() + 7);
 
+    const now = new Date();
+
     // ===== 1) Índice de slots donde el estudiante YA está =====
     // Buscamos todas las inscripciones activas/asignadas del estudiante en los meses del rango
     const months = new Set([
@@ -116,6 +118,8 @@ export async function GET(req, { params }) {
                 s.endMin % 60
               )
             );
+
+            if (start <= now) continue;
             days.push({
               to: start.toISOString(),
               endISO: end.toISOString(),

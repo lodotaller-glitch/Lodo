@@ -59,6 +59,7 @@ export default function UserEditor({
   branchId: branchIdProp,
   apiPath = "students",
   role,
+  professor,
 }) {
   const [form, setForm] = useState({
     name: "",
@@ -168,6 +169,7 @@ export default function UserEditor({
       setSaving(false);
     }
   }
+  
 
   const isProfessor = useMemo(() => form.role === "professor", [form.role]);
 
@@ -347,7 +349,11 @@ export default function UserEditor({
         ) : (
           form.role === "student" && (
             <Link
-              href={`/${branchId}/students/${userId}/pieces`}
+              href={
+                !professor
+                  ? `/${branchId}/students/${userId}/pieces`
+                  : `/professor/students/${userId}/pieces`
+              }
               className="rounded-xl px-4 py-2 font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
               style={{ backgroundColor: BRAND.main, color: "#fff" }}
             >

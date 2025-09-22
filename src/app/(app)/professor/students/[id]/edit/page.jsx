@@ -13,7 +13,12 @@ export default function UserEditPage({ params }) {
 
   return (
     <main className="max-w-5xl mx-auto p-6 space-y-6">
-      <UserEditor userId={id} title="Datos del estudiante" />
+      <UserEditor
+        userId={id}
+        branchIdProp={branchId}
+        title="Datos del estudiante"
+        professor={true}
+      />
 
       {id && <EnrollmentManagerById studentId={id} branchId={branchId} />}
     </main>

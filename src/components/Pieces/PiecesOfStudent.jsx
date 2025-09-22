@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
 function StatusBadge({ status }) {
-
   const palette = useMemo(() => {
     // Variaciones sutiles manteniendo la marca
     const base = {
@@ -49,11 +48,12 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function PiecesOfStudent({ studentId }) {
+export default function PiecesOfStudent({ studentId, branchIdProp }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { branchId } = useParams();
+  const params = useParams();
+  const branchId = branchIdProp || params?.branchId;
 
   async function load() {
     setLoading(true);
@@ -72,24 +72,6 @@ export default function PiecesOfStudent({ studentId }) {
   useEffect(() => {
     load();
   }, [studentId]);
-
-  async function changeStatus(id, status) {
-    const res = await fetch(`/api/${branchId}/pieces/${id}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    const json = await res.json();
-    if (!json.ok) {
-      alert(json.error || "No se pudo actualizar");
-      return;
-    }
-    setItems((prev) => prev.map((p) => (p._id === id ? { ...p, status } : p)));
-    if (status === "Lista")
-      alert(
-        "Estado actualizado a Lista. Si el alumno tiene email, fue notificado."
-      );
-  }
 
   if (loading) return <p>Cargando…</p>;
   if (error) return <p className="text-red-600">{error}</p>;
@@ -209,7 +191,11 @@ export default function PiecesOfStudent({ studentId }) {
                 {/* Acciones */}
                 <div className="mt-3 flex items-center gap-2">
                   <a
-                    href={`/${branchId}/students/${studentId}/pieces/${p._id}`}
+                    href={
+                      !branchIdProp
+                        ? `/${branchId}/students/${studentId}/pieces/${p._id}`
+                        : `/professor/students/${studentId}/pieces/${p._id}`
+                    }
                     className="inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition"
                     style={{ backgroundColor: BRAND.main, color: "#fff" }}
                   >

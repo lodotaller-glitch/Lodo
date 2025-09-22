@@ -64,7 +64,7 @@ export default function Header() {
         return [
           ...common,
           { href: `/${user?.branch}`, label: "Inicio" },
-          { href: `/${user.branch}/students`, label: "Estudiantes" },
+          { href: `/${user?.branch}/students`, label: "Estudiantes" },
           // { href: `/${user.branch}/pieces`, label: "Piezas" },
           // { href: `/${user.branch}/networks`, label: "Redes" },
         ];
