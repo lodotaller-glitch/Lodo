@@ -3,7 +3,13 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Calendar, dateFnsLocalizer } from "react-big-calendar";
+import {
+  Calendar,
+  dateFnsLocalizer,
+  Views,
+  Navigate,
+} from "react-big-calendar";
+
 import {
   startOfWeek,
   format,
@@ -11,6 +17,7 @@ import {
   getDay,
   addMonths,
   subMonths,
+  addHours,
 } from "date-fns";
 import es from "date-fns/locale/es";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -98,6 +105,16 @@ export default function RoleCalendar({
   const [error, setError] = useState("");
   const [hideFull, setHideFull] = useState(false);
   const [selectedProfIds, setSelectedProfIds] = useState([]); // para admin
+  const [view, setView] = useState(Views.MONTH);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
 
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth() + 1;
@@ -150,9 +167,9 @@ export default function RoleCalendar({
 
       const mapped = (data.events || []).map((ev) => ({
         title: ev.title,
-        start: new Date(ev.start),
-        end: new Date(ev.end),
-        resource: ev,
+        start: addHours(new Date(ev.start), 3), // +3 hs para visualizar
+        end: addHours(new Date(ev.end), 3), // +3 hs para visualizar
+        resource: ev, // queda “crudo” para tus rutas
         classStatus: ev?.classState || false,
         allDay: false,
       }));
@@ -216,34 +233,37 @@ export default function RoleCalendar({
   }, [events, role, selectedProfIds, hideFull]);
 
   // Estilo por evento con paleta de marca
-  const eventPropGetter = useCallback((event) => {
-    const status = event?.resource?.status;
-    const profId = event?.resource?.professorId;
-    const classState = event?.resource?.classState;
+  const eventPropGetter = useCallback(
+    (event) => {
+      const status = event?.resource?.status;
+      const profId = event?.resource?.professorId;
+      const classState = event?.resource?.classState;
 
-    const style = {
-      borderRadius: 12,
-      border: `1px solid ${BRAND.main}22`,
-      borderLeft: `6px solid ${colorForProfessor(profId)}`,
-      backgroundColor:
-        role !== "student"
-          ? status === "full"
-            ? BRAND.full
-            : BRAND.noFull
-          : classState
-          ? BRAND.noFull
-          : BRAND.full,
-      color:
-        role !== "student"
-          ? status === "full"
-            ? "#fff"
-            : BRAND.text
-          : classState
-          ? BRAND.text
-          : "#fff",
-    };
-    return { style };
-  }, []);
+      const style = {
+        borderRadius: 12,
+        border: `1px solid ${BRAND.main}22`,
+        borderLeft: `6px solid ${colorForProfessor(profId)}`,
+        backgroundColor:
+          role !== "student"
+            ? status === "full"
+              ? BRAND.full
+              : BRAND.noFull
+            : classState
+            ? BRAND.noFull
+            : BRAND.full,
+        color:
+          role !== "student"
+            ? status === "full"
+              ? "#fff"
+              : BRAND.text
+            : classState
+            ? BRAND.text
+            : "#fff",
+      };
+      return { style };
+    },
+    [role]
+  );
 
   // Navegación por defecto según rol
   const handleEventClick = useCallback(
@@ -282,6 +302,8 @@ export default function RoleCalendar({
       toolbar: (props) => (
         <CustomToolbar
           {...props}
+          view={view} // <-- pasa vista actual
+          onView={(v) => setView(v)} // <-- y el setter
           monthDate={monthDate}
           setMonthDate={(d) => {
             setMonthDate(d);
@@ -290,7 +312,7 @@ export default function RoleCalendar({
         />
       ),
     }),
-    [monthDate, onMonthChange]
+    [view, monthDate, onMonthChange]
   );
 
   return (
@@ -420,18 +442,22 @@ export default function RoleCalendar({
         startAccessor="start"
         endAccessor="end"
         date={monthDate}
+        view={view}
+        onView={(v) => setView(v)}
         style={{
           height: 720,
           background: "white",
           borderRadius: 16,
           padding: 12,
         }}
-        views={["month", "week", "day"]}
-        defaultView="month"
+        views={[Views.MONTH, Views.WEEK, Views.DAY]}
+        defaultView={Views.MONTH}
         eventPropGetter={eventPropGetter}
         messages={rbCalendarEsMessages}
         components={components}
-        popup
+        // 👇 clave para móvil en vista mes
+        showAllEvents={isMobile && view === Views.MONTH}
+        popup={!(isMobile && view === Views.MONTH)}
         onNavigate={(newDate) => setMonthDate(new Date(newDate))}
         onSelectEvent={handleEventClick}
       />
@@ -440,6 +466,79 @@ export default function RoleCalendar({
     </section>
   );
 }
+
+// function CustomToolbar({
+//   label,
+//   onNavigate,
+//   onView,
+//   view,
+//   monthDate,
+//   setMonthDate,
+// }) {
+//   return (
+//     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+//       <div className="flex items-center gap-2">
+//         <button
+//           onClick={() => {
+//             setMonthDate((d) => subMonths(d, 1));
+//             onNavigate("PREV");
+//           }}
+//           className="px-3 py-1.5 rounded-lg border"
+//         >
+//           ◀ Mes anterior
+//         </button>
+//         <button
+//           onClick={() => {
+//             const now = new Date();
+//             setMonthDate(new Date(now.getFullYear(), now.getMonth(), 1));
+//             onNavigate("TODAY");
+//           }}
+//           className="px-3 py-1.5 rounded-lg border"
+//         >
+//           Hoy
+//         </button>
+//         <button
+//           onClick={() => {
+//             setMonthDate((d) => addMonths(d, 1));
+//             onNavigate("NEXT");
+//           }}
+//           className="px-3 py-1.5 rounded-lg border"
+//         >
+//           Mes siguiente ▶
+//         </button>
+//       </div>
+//       <div className="text-base font-medium">
+//         {format(monthDate, "MMMM yyyy", { locale: es })}
+//       </div>
+//       <div className="flex items-center gap-2">
+//         <button
+//           onClick={() => onView("month")}
+//           className={`px-3 py-1.5 rounded-lg border ${
+//             view === "month" ? "bg-white" : ""
+//           }`}
+//         >
+//           Mes
+//         </button>
+//         <button
+//           onClick={() => onView("week")}
+//           className={`px-3 py-1.5 rounded-lg border ${
+//             view === "week" ? "bg-white" : ""
+//           }`}
+//         >
+//           Semana
+//         </button>
+//         <button
+//           onClick={() => onView("day")}
+//           className={`px-3 py-1.5 rounded-lg border ${
+//             view === "day" ? "bg-white" : ""
+//           }`}
+//         >
+//           Día
+//         </button>
+//       </div>
+//     </div>
+//   );
+// }
 
 function CustomToolbar({
   label,
@@ -455,7 +554,7 @@ function CustomToolbar({
         <button
           onClick={() => {
             setMonthDate((d) => subMonths(d, 1));
-            onNavigate("PREV");
+            onNavigate(Navigate.PREV);
           }}
           className="px-3 py-1.5 rounded-lg border"
         >
@@ -465,7 +564,7 @@ function CustomToolbar({
           onClick={() => {
             const now = new Date();
             setMonthDate(new Date(now.getFullYear(), now.getMonth(), 1));
-            onNavigate("TODAY");
+            onNavigate(Navigate.TODAY);
           }}
           className="px-3 py-1.5 rounded-lg border"
         >
@@ -474,37 +573,39 @@ function CustomToolbar({
         <button
           onClick={() => {
             setMonthDate((d) => addMonths(d, 1));
-            onNavigate("NEXT");
+            onNavigate(Navigate.NEXT);
           }}
           className="px-3 py-1.5 rounded-lg border"
         >
           Mes siguiente ▶
         </button>
       </div>
+
       <div className="text-base font-medium">
         {format(monthDate, "MMMM yyyy", { locale: es })}
       </div>
+
       <div className="flex items-center gap-2">
         <button
-          onClick={() => onView("month")}
+          onClick={() => onView(Views.MONTH)}
           className={`px-3 py-1.5 rounded-lg border ${
-            view === "month" ? "bg-white" : ""
+            view === Views.MONTH ? "bg-white" : ""
           }`}
         >
           Mes
         </button>
         <button
-          onClick={() => onView("week")}
+          onClick={() => onView(Views.WEEK)}
           className={`px-3 py-1.5 rounded-lg border ${
-            view === "week" ? "bg-white" : ""
+            view === Views.WEEK ? "bg-white" : ""
           }`}
         >
           Semana
         </button>
         <button
-          onClick={() => onView("day")}
+          onClick={() => onView(Views.DAY)}
           className={`px-3 py-1.5 rounded-lg border ${
-            view === "day" ? "bg-white" : ""
+            view === Views.DAY ? "bg-white" : ""
           }`}
         >
           Día
