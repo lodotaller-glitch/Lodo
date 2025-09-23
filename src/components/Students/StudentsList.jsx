@@ -36,6 +36,7 @@ export default function StudentsList({ professor = false }) {
   );
 
   useEffect(() => {
+    if (!branchId) return;
     let alive = true;
     async function load() {
       setLoading(true);

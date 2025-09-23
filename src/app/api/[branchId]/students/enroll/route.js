@@ -1,4 +1,6 @@
+export const runtime = "nodejs";
 import dbConnect from "@/lib/dbConnect";
+import { sendNewAccountEmail } from "@/lib/mailer";
 import { User, Enrollment, ProfessorSchedule } from "@/models";
 import { hhmmToMin } from "@/utils/time";
 
@@ -18,6 +20,22 @@ const parseSlot = (body) => {
   return null;
 };
 
+const DOW = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+];
+const minToHHMM = (m) => {
+  const h = Math.floor(m / 60),
+    mi = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+};
+
+
 export async function POST(req) {
   try {
     await dbConnect();
@@ -33,6 +51,7 @@ export async function POST(req) {
       month,
       createBy,
     } = body || {};
+
     if (
       !email ||
       !name ||
@@ -47,21 +66,27 @@ export async function POST(req) {
         { status: 400 }
       );
     }
-    const slot = parseSlot(body);
 
+    const slot = parseSlot(body);
     if (!slot) return Response.json({ error: "Falta slot" }, { status: 400 });
 
     // 1) Student (alta o buscar existente)
+    let wasNew = false; // <— para saber si debemos mandar el email
     let student = await User.findOne({ email: email.toLowerCase() }).lean();
+
     if (!student) {
-      student = await User.create({
+      // OJO: si tenés pre-save hook de hash, guardá "password" (no hash) para que el hook lo procese.
+      // Si NO tenés hook, reemplazá por el hash correcto.
+      const created = await User.create({
         name,
         email: email.toLowerCase(),
-        passwordHash: password,
+        passwordHash: password, // <-- ajustá según tu modelo/hook
         branch,
         role: "student",
         state: true,
       });
+      student = created.toObject();
+      wasNew = true; // <—
     } else if (student.role !== "student") {
       return Response.json(
         { error: "El email ya existe y no corresponde a student" },
@@ -69,7 +94,7 @@ export async function POST(req) {
       );
     }
 
-    // 2) Validar slot contra horario vigente del professor para el mes
+    // 2) Validar slot contra horario vigente del profesor para el mes
     const monthStart = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
     const schedule = await ProfessorSchedule.findActiveForDate(
       professorId,
@@ -85,9 +110,7 @@ export async function POST(req) {
       `${schedule.professor.toString()}-${s.dayOfWeek}-${s.startMin}-${
         s.endMin
       }`;
-
     const setSched = new Set(schedule.slots.map(key));
-
     if (!setSched.has(key(slot))) {
       return Response.json(
         {
@@ -98,10 +121,9 @@ export async function POST(req) {
       );
     }
 
-    // 3) Capacidad semanal (aproximación por franja)
+    // 3) Capacidad semanal (aprox por franja)
     const prof = await User.findById(professorId).lean();
     const capacity = Math.max(1, Number(prof?.capacity ?? 10));
-
     const sameSlotCount = await Enrollment.countDocuments({
       professor: professorId,
       year: Number(year),
@@ -109,7 +131,6 @@ export async function POST(req) {
       estado: "activa",
       chosenSlots: { $elemMatch: slot },
     });
-
     if (sameSlotCount >= capacity) {
       return Response.json(
         { error: "No hay cupo en esa franja para este mes" },
@@ -119,9 +140,7 @@ export async function POST(req) {
 
     let assigned = Boolean(assignedNow);
     if (assigned) {
-      const prof = await User.findById(professorId).lean();
-      const capacity = Math.max(1, Number(prof?.capacity ?? 10));
-      const sameSlotCount = await Enrollment.countDocuments({
+      const sameSlotAssignedCount = await Enrollment.countDocuments({
         professor: professorId,
         year: Number(year),
         month: Number(month),
@@ -129,11 +148,12 @@ export async function POST(req) {
         assigned: true,
         chosenSlots: { $elemMatch: slot },
       });
-      if (sameSlotCount >= capacity)
-        return NextResponse.json(
+      if (sameSlotAssignedCount >= capacity) {
+        return Response.json(
           { error: "Sin cupo en esa franja" },
           { status: 409 }
         );
+      }
     }
 
     // 4) Crear inscripción
@@ -147,11 +167,37 @@ export async function POST(req) {
       assigned,
       createBy: createBy || null,
     });
+
     await User.updateOne({ _id: student._id }, { $inc: { clayKg: 1.5 } });
+
+    // 5) Si el usuario fue creado recién, enviamos el email de nueva cuenta
+    if (wasNew) {
+      const weekdayLabel = DOW[slot.dayOfWeek] || "";
+      const timeRangeLabel = `${minToHHMM(slot.startMin)}–${minToHHMM(
+        slot.endMin
+      )}`;
+      try {
+        await sendNewAccountEmail(email, {
+          studentName: name,
+          email,
+          tempPassword: password || undefined,
+          professorName: prof?.name || "Profesor/a",
+          weekdayLabel,
+          timeRangeLabel,
+          year: Number(year),
+          month: Number(month),
+        });
+      } catch (e) {
+        // No interrumpir el flujo por fallo de email
+        console.error("email error", email, e?.message);
+      }
+    }
+
     return Response.json({
       ok: true,
       enrollmentId: enrollment._id,
       studentId: student._id,
+      sentWelcomeEmail: wasNew, // útil para debug/cliente
     });
   } catch (err) {
     console.error("inscribir student error:", err);

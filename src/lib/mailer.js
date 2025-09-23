@@ -1,10 +1,21 @@
 import nodemailer from "nodemailer";
 
+// const transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: process.env.GMAIL_USER,
+//     pass: process.env.GMAIL_APP_PASSWORD,
+//   },
+// });
+
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.office365.com",
+  port: 587,
+  secure: false,          // STARTTLS
+  requireTLS: true,
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
+    user: process.env.M365_GMAIL,      // p.ej. administracion@lodoceramica.com
+    pass: process.env.M365_PASSWORD,
   },
 });
 
@@ -132,7 +143,7 @@ export async function sendPieceReadyEmail(to, { studentName, pieceTitle }) {
   });
 
   await transporter.sendMail({
-    from: `Taller <${process.env.GMAIL_USER}>`,
+    from: `Taller <${process.env.M365_GMAIL}>`,
     to,
     subject,
     html,
@@ -194,7 +205,7 @@ export async function sendNewAccountEmail(
   });
 
   await transporter.sendMail({
-    from: `Taller <${process.env.GMAIL_USER}>`,
+    from: `Taller <${process.env.M365_GMAIL}>`,
     to,
     subject,
     html,
