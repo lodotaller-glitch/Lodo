@@ -196,6 +196,10 @@ export async function sendNewAccountEmail(
     <p style="margin:16px 0 0 0;">— Equipo Lodo Cerámica</p>
   `;
 
+  console.log("sendNewAccountEmail to:", to, "with temp pass:", tempPassword);
+  console.log(process.env.M365_GMAIL, process.env.M365_PASSWORD, "passInfo");
+  
+
   const html = emailBase({
     preheader: "Tu cuenta del Taller Lodo Cerámica ya está activa",
     heading: "¡Cuenta creada con éxito!",
