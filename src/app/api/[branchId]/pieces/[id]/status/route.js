@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextResponse as _NR } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import { Piece, User } from "@/models";
@@ -40,7 +42,6 @@ export async function PATCH(req, { params }) {
     const student = await User.findById(piece.student).lean();
     if (student?.email) {
       try {
-        
         await sendPieceReadyEmail(student.email, {
           studentName: student.name || student.fullName || "",
           pieceTitle: piece.title,

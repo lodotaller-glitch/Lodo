@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextResponse as _NR } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import { Piece, User } from "@/models";

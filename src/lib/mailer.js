@@ -11,10 +11,10 @@ import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
   host: "smtp.office365.com",
   port: 587,
-  secure: false,          // STARTTLS
+  secure: false, // STARTTLS
   requireTLS: true,
   auth: {
-    user: process.env.M365_GMAIL,      // p.ej. administracion@lodoceramica.com
+    user: process.env.M365_GMAIL, // p.ej. administracion@lodoceramica.com
     pass: process.env.M365_PASSWORD,
   },
 });
@@ -196,10 +196,6 @@ export async function sendNewAccountEmail(
     <p style="margin:16px 0 0 0;">— Equipo Lodo Cerámica</p>
   `;
 
-  console.log("sendNewAccountEmail to:", to, "with temp pass:", tempPassword);
-  console.log(process.env.M365_GMAIL, process.env.M365_PASSWORD, "passInfo");
-  
-
   const html = emailBase({
     preheader: "Tu cuenta del Taller Lodo Cerámica ya está activa",
     heading: "¡Cuenta creada con éxito!",
@@ -215,4 +211,6 @@ export async function sendNewAccountEmail(
     html,
     text: toPlainText(contentHtml),
   });
+
+  console.log(`Email de nueva cuenta enviado a ${to}`);
 }
