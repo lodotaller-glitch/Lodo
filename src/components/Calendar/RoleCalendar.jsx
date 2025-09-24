@@ -436,31 +436,54 @@ export default function RoleCalendar({
         </div>
       )}
 
-      <Calendar
-        localizer={localizer}
-        events={filteredEvents}
-        startAccessor="start"
-        endAccessor="end"
-        date={monthDate}
-        view={view}
-        onView={(v) => setView(v)}
-        style={{
-          height: 720,
-          background: "white",
-          borderRadius: 16,
-          padding: 12,
-        }}
-        views={[Views.MONTH, Views.WEEK, Views.DAY]}
-        defaultView={Views.MONTH}
-        eventPropGetter={eventPropGetter}
-        messages={rbCalendarEsMessages}
-        components={components}
-        // 👇 clave para móvil en vista mes
-        showAllEvents={isMobile && view === Views.MONTH}
-        popup={!(isMobile && view === Views.MONTH)}
-        onNavigate={(newDate) => setMonthDate(new Date(newDate))}
-        onSelectEvent={handleEventClick}
-      />
+      <div
+        className={
+          isMobile && view === Views.WEEK
+            ? "overflow-x-auto -mx-3 sm:mx-0 px-3"
+            : ""
+        }
+        style={
+          isMobile && view === Views.WEEK
+            ? { WebkitOverflowScrolling: "touch" } // scroll suave en iOS
+            : undefined
+        }
+      >
+        {/* Este inner fuerza un ancho mínimo “grande” para que aparezca la barra */}
+        <div
+          style={
+            isMobile && view === Views.WEEK
+              ? { minWidth: 1200 } // probá 1200–1400px según tus eventos
+              : undefined
+          }
+        >
+          <Calendar
+            localizer={localizer}
+            events={filteredEvents}
+            startAccessor="start"
+            endAccessor="end"
+            date={monthDate}
+            view={view}
+            onView={(v) => setView(v)}
+            style={{
+              height: 720,
+              background: "white",
+              borderRadius: 16,
+              padding: 12,
+            }}
+            views={[Views.MONTH, Views.WEEK, Views.DAY]}
+            defaultView={Views.MONTH}
+            eventPropGetter={eventPropGetter}
+            messages={rbCalendarEsMessages}
+            components={components}
+            showAllEvents={isMobile && view === Views.MONTH}
+            popup={!(isMobile && view === Views.MONTH)}
+            onNavigate={(newDate) => setMonthDate(new Date(newDate))}
+            onSelectEvent={handleEventClick}
+            // Opcional: empezar la vista semana scrolleada cerca de las 9
+            scrollToTime={new Date(1970, 0, 1, 9, 0, 0)}
+          />
+        </div>
+      </div>
 
       <Legend role={role === "student"} />
     </section>
