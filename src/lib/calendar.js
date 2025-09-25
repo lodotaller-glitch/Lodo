@@ -133,6 +133,25 @@ export async function getProfessorMonthCalendar({ professorId, year, month }) {
   const movedOut = new Map(); // idem
   const inc = (map, k) => map.set(k, (map.get(k) || 0) + 1);
 
+  const regularRemovedDocs = await Attendance.find({
+    origin: { $in: [null, "regular"] }, // por compat
+    professor: professorId,
+    date: { $gte: monthStart, $lte: monthEnd },
+    removed: true,
+    slotSnapshot: { $exists: true }, // ya lo guardamos en DELETE
+  })
+    .select("date slotSnapshot")
+    .lean();
+
+  const regularRemoved = new Map(); // `${profId}|${dateISO}|${slotKey}` -> n
+
+  for (const a of regularRemovedDocs) {
+    if (!a.slotSnapshot) continue;
+    const dayISO = dateOnlyISO(new Date(a.date));
+    const k = slotKey(a.slotSnapshot, String(professorId));
+    inc(regularRemoved, `${professorId}|${dayISO}|${k}`);
+  }
+
   for (const r of reschedules) {
     if (
       r.toDate &&
@@ -184,8 +203,12 @@ export async function getProfessorMonthCalendar({ professorId, year, month }) {
       const outDay = movedOut.get(`${professorId}|${iso}|${k}`) || 0;
       const inDay = movedIn.get(`${professorId}|${iso}|${k}`) || 0;
       const adhocDay = adhocIn.get(`${professorId}|${iso}|${k}`) || 0; // 👈 nuevo
+      const removedDay = regularRemoved.get(`${professorId}|${iso}|${k}`) || 0;
 
-      const takenDay = Math.max(0, takenBase - outDay + inDay + adhocDay);
+      const takenDay = Math.max(
+        0,
+        takenBase - outDay + inDay + adhocDay - removedDay
+      );
       const left = Math.max(0, capacity - takenDay);
 
       events.push({

@@ -270,7 +270,7 @@ export default function ReprogramarClasePage({ searchParams }) {
       {/* Ayuda */}
       <p className="text-xs" style={{ color: `${BRAND.text}99` }}>
         Tip: elegí el horario que mejor te quede. Si no ves opciones, probá más
-        tarde o contactá a tu profesor/a.
+        tarde o contactá a Lodo.
       </p>
     </main>
   );

@@ -192,6 +192,25 @@ export async function GET(req, { params }) {
       inc(adhocIn, `${pid}|${iso}|${k}`);
     }
 
+    const regularRemoved = await Attendance.find({
+      origin: "regular",
+      professor: { $in: professorIds },
+      date: { $gte: monthStart, $lte: monthEnd },
+      removed: true,
+      slotSnapshot: { $exists: true },
+    })
+      .select("professor date slotSnapshot")
+      .lean();
+
+    const regularRemovedMap = new Map(); // `${pid}|${dateISO}|${slotKey}` -> n
+    for (const a of regularRemoved) {
+      if (!a.slotSnapshot) continue;
+      const pid = String(a.professor);
+      const iso = dateOnlyISO(new Date(a.date));
+      const k = slotKey(a.slotSnapshot, pid);
+      inc(regularRemovedMap, `${pid}|${iso}|${k}`);
+    }
+
     // 5) Expandir a eventos por día del mes
     const events = [];
     for (const sc of schedules) {
@@ -199,10 +218,7 @@ export async function GET(req, { params }) {
       const prof = userById.get(pid);
 
       const profName = prof?.name || "Profesor";
-      const capacity = Math.max(
-        1,
-        Number(prof?.capacity ?? 10)
-      );
+      const capacity = Math.max(1, Number(prof?.capacity ?? 10));
       const inner = counts.get(pid) || new Map();
 
       for (const s of sc.slots) {
@@ -215,8 +231,12 @@ export async function GET(req, { params }) {
           const outDay = movedOut.get(`${pid}|${iso}|${k}`) || 0;
           const inDay = movedIn.get(`${pid}|${iso}|${k}`) || 0;
           const adhocDay = adhocIn.get(`${pid}|${iso}|${k}`) || 0; // 👈 ADHOC
+          const removedDay = regularRemovedMap.get(`${pid}|${iso}|${k}`) || 0;
 
-          const takenDay = Math.max(0, takenBase - outDay + inDay + adhocDay); // 👈 ADHOC sumado
+          const takenDay = Math.max(
+            0,
+            takenBase - outDay + inDay + adhocDay - removedDay
+          );
           const leftDay = Math.max(0, capacity - takenDay);
           const status = leftDay > 0 ? "available" : "full";
 

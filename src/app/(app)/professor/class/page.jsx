@@ -285,17 +285,27 @@ export default function ProfessorClassPage({ searchParams }) {
 
       {/* Asistencia */}
       <section
-        className="rounded-2xl border p-4 shadow-sm sm:p-6"
-        style={{ borderColor: BRAND.soft }}
+        className="rounded-2xl border shadow-sm p-5 sm:p-6"
+        style={{
+          borderColor: BRAND.soft,
+          background: `linear-gradient(180deg, ${BRAND.soft}33, #ffffff)`,
+        }}
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold" style={{ color: BRAND.text }}>
+          <h2
+            className="text-base sm:text-lg font-semibold tracking-tight"
+            style={{ color: BRAND.text }}
+          >
             Asistencia
           </h2>
           <button
             onClick={addStudent}
-            className="rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition hover:shadow"
-            style={{ backgroundColor: BRAND.main, color: "#fff" }}
+            className="rounded-xl px-3.5 py-2 text-sm font-medium shadow-sm transition hover:shadow md:active:translate-y-[1px] focus:outline-none focus:ring-2"
+            style={{
+              backgroundColor: BRAND.main,
+              color: "#fff",
+              boxShadow: "0 1px 1px rgba(0,0,0,.05)",
+            }}
           >
             Agregar alumno
           </button>
@@ -303,32 +313,42 @@ export default function ProfessorClassPage({ searchParams }) {
 
         {students.length === 0 ? (
           <div
-            className="mt-4 rounded-xl border border-dashed p-4 text-sm text-center"
-            style={{ borderColor: `${BRAND.main}55`, color: `${BRAND.text}99` }}
+            className="mt-4 rounded-2xl border border-dashed p-6 text-sm text-center"
+            style={{ borderColor: `${BRAND.main}66`, color: `${BRAND.text}99` }}
           >
+            <div
+              className="mx-auto mb-2 h-8 w-8 rounded-full"
+              style={{ background: `${BRAND.soft}` }}
+            />
             No hay alumnos en esta clase todavía.
           </div>
         ) : (
-          <ul className="mt-3 divide-y" style={{ borderColor: BRAND.soft }}>
+          <ul
+            className="mt-3 divide-y rounded-xl border bg-white/70"
+            style={{ borderColor: BRAND.soft }}
+          >
             {students.map((s) => (
               <li
                 key={`${s.id}-${s.origin || "regular"}`}
-                className="flex items-center justify-between gap-3 py-2"
+                className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4 hover:bg-black/[.02] transition"
               >
-                <label className="flex min-w-0 items-center gap-2">
+                <label className="flex min-w-0 items-center gap-3">
                   <input
                     type="checkbox"
                     checked={s.present}
                     onChange={() => toggleAttendance(s)}
-                    className="h-4 w-4"
+                    className="h-4 w-4 rounded focus:outline-none focus:ring-2"
                     style={{ accentColor: BRAND.main }}
                   />
-                  <span className="truncate" style={{ color: BRAND.text }}>
+                  <span
+                    className="truncate font-medium"
+                    style={{ color: BRAND.text }}
+                  >
                     {s.name}
                   </span>
                   {s.origin === "adhoc" && (
                     <span
-                      className="rounded-full px-2 py-0.5 text-xs"
+                      className="rounded-full px-2 py-0.5 text-[11px] uppercase tracking-wide"
                       style={{
                         backgroundColor: `${BRAND.soft}`,
                         border: `1px solid ${BRAND.main}55`,
@@ -339,17 +359,71 @@ export default function ProfessorClassPage({ searchParams }) {
                     </span>
                   )}
                 </label>
-                <button
-                  onClick={() => removeStudent(s.id)}
-                  className="rounded-lg px-2 py-1 text-xs transition hover:shadow-sm"
-                  style={{
-                    border: `1px solid ${BRAND.main}`,
-                    backgroundColor: `${BRAND.soft}55`,
-                    color: BRAND.text,
-                  }}
-                >
-                  Quitar
-                </button>
+
+                <div className="ml-auto flex items-center gap-2">
+                  {s.enrollmentId ? (
+                    <span
+                      className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+                      style={{
+                        backgroundColor:
+                          s.payState === "pagado"
+                            ? "#DCFCE7"
+                            : s.payState === "señado"
+                            ? "#FEF9C3"
+                            : s.payState === "cancelado"
+                            ? "#FEE2E2"
+                            : "#F3F4F6",
+                        border:
+                          s.payState === "pagado"
+                            ? "1px solid #16A34A55"
+                            : s.payState === "señado"
+                            ? "1px solid #CA8A0455"
+                            : s.payState === "cancelado"
+                            ? "1px solid #B91C1C55"
+                            : "1px solid #9CA3AF55",
+                        color:
+                          s.payState === "pagado"
+                            ? "#065F46"
+                            : s.payState === "señado"
+                            ? "#92400E"
+                            : s.payState === "cancelado"
+                            ? "#7F1D1D"
+                            : "#374151",
+                      }}
+                      title={`Estado de pago: ${s.payState || "pendiente"}`}
+                    >
+                      {s.payState === "pagado"
+                        ? "Pagado"
+                        : s.payState === "señado"
+                        ? "Señado"
+                        : s.payState === "cancelado"
+                        ? "Cancelado"
+                        : "Pendiente"}
+                    </span>
+                  ) : null}
+
+                  {s._id ? (
+                    <a
+                      href={`/professor/students/${s._id}/edit`}
+                      className="rounded-lg px-2 py-1 text-xs transition hover:bg-black/[.04] focus:outline-none focus:ring-2"
+                      style={{ color: BRAND.main }}
+                    >
+                      Editar
+                    </a>
+                  ) : null}
+
+                  <button
+                    onClick={() => removeStudent(s.id)}
+                    className="rounded-lg px-2 py-1 text-xs transition hover:shadow-sm focus:outline-none focus:ring-2"
+                    style={{
+                      border: `1px solid ${BRAND.main}`,
+                      backgroundColor: `${BRAND.soft}66`,
+                      color: BRAND.text,
+                    }}
+                  >
+                    Quitar
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -419,7 +493,7 @@ export default function ProfessorClassPage({ searchParams }) {
             )}
           </div>
 
-          <div className="text-sm" style={{ color: `${BRAND.text}99` }}>
+          {/* <div className="text-sm" style={{ color: `${BRAND.text}99` }}>
             <div className="mb-2">
               URL:{" "}
               <code className="rounded bg-black/5 px-1.5 py-0.5">
@@ -433,7 +507,7 @@ export default function ProfessorClassPage({ searchParams }) {
             >
               {copied ? "¡Copiado!" : "Copiar enlace"}
             </button>
-          </div>
+          </div> */}
         </div>
       </section>
     </main>

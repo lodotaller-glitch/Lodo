@@ -34,6 +34,9 @@ function endOfDayUTC(d) {
   );
 }
 
+const dayOfWeekUTC = (d) => d.getUTCDay();
+const startMinUTC = (d) => d.getUTCHours() * 60 + d.getUTCMinutes();
+
 export async function GET(req, { params }) {
   try {
     await dbConnect();
@@ -59,16 +62,16 @@ export async function GET(req, { params }) {
       professor: professorId,
       year,
       month,
-      $or: [{ state: "activa" }, { estado: "activa" }],
+      state: "activa",
     })
-      .select("student chosenSlots assigned asignado")
+      .select("student chosenSlots assigned pay.state")
       .populate("student", "name")
       .lean();
-
+    const enById = new Map(enrollments.map((e) => [String(e._id), e]));
     // Base regulares asignados que tienen ese slot
     const regularBase = [];
     for (const e of enrollments) {
-      const isAssigned = e.assigned === true || e.asignado === true;
+      const isAssigned = e.assigned === true;
       if (!isAssigned) continue;
       const match = (e.chosenSlots || []).some(
         (s) =>
@@ -77,11 +80,14 @@ export async function GET(req, { params }) {
           s.endMin === endMin
       );
       if (match) {
+        const payState = e?.pay?.state || "pendiente";
         regularBase.push({
           id: String(e.student._id),
           name: e.student.name,
           enrollmentId: String(e._id),
           origin: "regular",
+          payState, // 👈 "pagado" | "señado" | "pendiente" | "cancelado"
+          paid: payState === "pagado", // 👈 comodidad para la UI
         });
       }
     }
@@ -138,12 +144,19 @@ export async function GET(req, { params }) {
       .populate("student", "name")
       .lean();
 
-    const rescheduleIn = resInDocs.map((r) => ({
-      id: r.student ? String(r.student._id || r.student) : undefined,
-      name: r.student?.name || "Alumno",
-      enrollmentId: r.enrollment ? String(r.enrollment) : null,
-      origin: "reschedule-in",
-    }));
+    const rescheduleIn = resInDocs.map((r) => {
+      const enId = r.enrollment ? String(r.enrollment) : null;
+      const en = enId ? enById.get(enId) : null;
+      const payState = en?.pay?.state || "pendiente";
+      return {
+        id: r.student ? String(r.student._id || r.student) : undefined,
+        name: r.student?.name || "Alumno",
+        enrollmentId: enId,
+        origin: "reschedule-in",
+        payState,
+        paid: payState === "pagado",
+      };
+    });
 
     // 4) Regulares vigentes = base - OUT
     const regularActive = regularBase.filter(
@@ -178,22 +191,26 @@ export async function GET(req, { params }) {
     const resultRegular = regularActive
       .filter((s) => !attByEnrollment.get(s.enrollmentId)?.removed)
       .map((s) => ({
-        id: s.id,
+        _id: s.id,
         name: s.name,
         enrollmentId: s.enrollmentId,
         present: attByEnrollment.get(s.enrollmentId)?.status === "presente",
         origin: "regular",
+        payState: s.payState,
+        paid: s.paid === true,
       }));
 
     // 7) Resultado de reprogramados IN (con present si hay asistencia REGULAR por enrollment)
     const resultResIn = rescheduleIn.map((s) => ({
-      id: s.id,
+      _id: s.id,
       name: s.name,
       enrollmentId: s.enrollmentId || null,
       present: s.enrollmentId
         ? attByEnrollment.get(s.enrollmentId)?.status === "presente"
         : false,
       origin: "reschedule-in",
+      payState: s.payState,
+      paid: s.paid === true,
     }));
 
     // 8) AD-HOC de ese día y slot (se mantiene igual)
@@ -210,14 +227,15 @@ export async function GET(req, { params }) {
       .select("student status")
       .populate("student", "name")
       .lean();
-      
 
     const resultAdhoc = adhocAttendances.map((a) => ({
-      id: String(a.student?._id),
+      _id: String(a.student?._id),
       name: a.student?.name,
       enrollmentId: null,
       present: a.status === "presente",
       origin: "adhoc",
+      payState: null,
+      paid: null,
     }));
 
     // 9) Combinar
@@ -375,23 +393,97 @@ export async function DELETE(req, { params }) {
   try {
     await dbConnect();
     const { branchId } = await params;
-    const { enrollmentId, studentId, professorId, start, origin } =
-      await req.json();
-    if (!start)
-      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
 
+    const {
+      enrollmentId,
+      studentId,
+      professorId,
+      start,
+      origin,
+      slot, // 👈 traer del front si lo tenés
+    } = await req.json();
+
+    if (!start) {
+      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+    }
     const date = new Date(start);
 
+    // ---------- REGULAR ----------
     if (enrollmentId && (!origin || origin === "regular")) {
+      // 1) Intentar snapshot desde `slot`
+      let snapshot = null;
+      let profId = professorId || null;
+      let studId = studentId || null;
+      let brId = branchId;
+
+      const parsed = parseSlot(slot);
+      if (parsed) {
+        snapshot = {
+          dayOfWeek: parsed.dayOfWeek,
+          startMin: parsed.startMin,
+          endMin: parsed.endMin,
+        };
+        profId = profId || parsed.professorId;
+      }
+
+      // 2) Si no hay snapshot, derivarlo de la Enrollment (dow + startMin)
+      if (!snapshot || !profId || !studId) {
+        const en = await Enrollment.findById(enrollmentId)
+          .select("student professor branch chosenSlots")
+          .lean();
+
+        if (en) {
+          studId = studId || String(en.student);
+          profId = profId || String(en.professor);
+          brId = brId || String(en.branch);
+
+          if (!snapshot) {
+            const dow = dayOfWeekUTC(date);
+            const sMin = startMinUTC(date);
+            const slotMatch = (en.chosenSlots || []).find(
+              (s) => s.dayOfWeek === dow && s.startMin === sMin
+            );
+            if (slotMatch) {
+              snapshot = {
+                dayOfWeek: slotMatch.dayOfWeek,
+                startMin: slotMatch.startMin,
+                endMin: slotMatch.endMin,
+              };
+            }
+          }
+        }
+      }
+
+      const update = {
+        removed: true,
+        origin: "regular",
+        ...(snapshot ? { slotSnapshot: snapshot } : {}),
+        ...(studId ? { student: studId } : {}),
+        ...(profId ? { professor: profId } : {}),
+        ...(brId ? { branch: brId } : {}),
+      };
+
       await Attendance.findOneAndUpdate(
-        { enrollment: enrollmentId, date },
-        { removed: true, origin: "regular" },
-        { upsert: true, setDefaultsOnInsert: true }
+        { enrollment: enrollmentId, date }, // índice único regular
+        { $set: update },
+        { upsert: true, setDefaultsOnInsert: true, runValidators: true }
       );
+
       return NextResponse.json({ ok: true });
     }
 
+    // ---------- AD-HOC ----------
     if (origin === "adhoc" && studentId && professorId) {
+      // Guardar snapshot si viene `slot` (útil para el conteo por día/slot)
+      const parsed = parseSlot(slot);
+      const snapshot = parsed
+        ? {
+            dayOfWeek: parsed.dayOfWeek,
+            startMin: parsed.startMin,
+            endMin: parsed.endMin,
+          }
+        : undefined;
+
       await Attendance.findOneAndUpdate(
         {
           student: studentId,
@@ -399,9 +491,15 @@ export async function DELETE(req, { params }) {
           branch: branchId,
           date,
           origin: "adhoc",
+        }, // índice único adhoc incluye origin
+        {
+          $set: {
+            removed: true,
+            ...(snapshot ? { slotSnapshot: snapshot } : {}),
+          },
+          $unset: { enrollment: "" }, // por las dudas
         },
-        { removed: true },
-        { upsert: true, setDefaultsOnInsert: true }
+        { upsert: true, setDefaultsOnInsert: true, runValidators: true }
       );
       return NextResponse.json({ ok: true });
     }
