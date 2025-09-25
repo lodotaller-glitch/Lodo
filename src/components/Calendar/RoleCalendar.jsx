@@ -577,7 +577,7 @@ function CustomToolbar({
         <button
           onClick={() => {
             setMonthDate((d) => subMonths(d, 1));
-            onNavigate(Navigate.PREV);
+            onNavigate(Navigate.PREVIOUS);
           }}
           className="px-3 py-1.5 rounded-lg border"
         >
