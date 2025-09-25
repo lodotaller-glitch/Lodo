@@ -20,9 +20,9 @@ export async function POST(req) {
   }
 
   const user = await User.findById(payload.id);
-  if (!user || user.refreshToken !== token) {
-    return NextResponse.json({ error: "Invalid session" }, { status: 401 });
-  }
+  // if (!user || user.refreshToken !== token) {
+  //   return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+  // }
 
   // Campos públicos que te sirven luego (no incluir nada sensible)
   const accessToken = signAccessToken({
