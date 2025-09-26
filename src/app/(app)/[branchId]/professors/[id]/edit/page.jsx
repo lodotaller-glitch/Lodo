@@ -220,6 +220,24 @@ export default function EditProfessorPage() {
             className="block text-sm font-medium mb-1"
             style={{ color: `${BRAND.text}CC` }}
           >
+            Contraseña
+          </label>
+          <input
+            type="text"
+            name="password"
+            value={professor.password || ""}
+            onChange={(e) => handleInputChange(e, setProfessor)}
+            className="mt-1 block w-full rounded-xl border bg-white/90 px-3 py-2 shadow-sm outline-none transition focus:ring-2"
+            style={{ borderColor: BRAND.soft, color: BRAND.text }}
+            placeholder="Dejar vacío para no cambiar"
+          />
+        </div>
+
+        <div>
+          <label
+            className="block text-sm font-medium mb-1"
+            style={{ color: `${BRAND.text}CC` }}
+          >
             Capacidad por clase
           </label>
           <input

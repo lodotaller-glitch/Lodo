@@ -20,7 +20,7 @@ const toId = (v) => {
 export async function DELETE(req, { params }) {
   try {
     await dbConnect();
-    const { branchId, id } = await params || {};
+    const { branchId, id } = (await params) || {};
     const profId = toId(id);
     const branchObjId = toId(branchId);
 
@@ -125,7 +125,7 @@ export async function PUT(req, { params }) {
     await dbConnect();
     const { id } = await params;
     const body = await req.json();
-    const { name, email, role, state, capacity } = body || {};
+    const { name, email, role, state, capacity, password } = body || {};
 
     const user = await User.findById(id);
     if (!user)
@@ -151,6 +151,7 @@ export async function PUT(req, { params }) {
     if (role !== undefined) user.role = role; // si querés, podés restringir cambios de rol
     if (state !== undefined) user.state = Boolean(state);
     if (capacity !== undefined) user.capacity = Math.max(1, Number(capacity));
+    if (password !== undefined) user.passwordHash = password;
 
     await user.save();
     return NextResponse.json({ ok: true });
