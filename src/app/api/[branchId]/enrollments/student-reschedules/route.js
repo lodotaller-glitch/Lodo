@@ -94,17 +94,27 @@ export async function POST(req, { params }) {
         { status: 403 }
       );
     }
-
+    
     // Validar ventana ±7 días si viene toDate explícito
     let toFinal = toDate ? new Date(toDate) : null;
+    const sevenDaysInMs = 1000 * 60 * 60 * 24 * 7; // 7 días en milisegundos
+
     if (toFinal) {
-      const diffDays = (toFinal - from) / (1000 * 60 * 60 * 24);
-      if (diffDays < 0 || diffDays > 7.0001) {
+      const diffDays = (toFinal - from) / sevenDaysInMs; // Diferencia en días
+      if (diffDays < -7.0001 || diffDays > 7.0001) {
         return NR.json({ error: "Debe ser dentro de 7 días" }, { status: 400 });
       }
     } else {
       // Si no viene toDate, deducimos una fecha cercana coherente con el DOW del slot
       toFinal = nearestDateForSlotAround(from, slotTo);
+
+      // Si la fecha generada está fuera del rango de ±7 días, ajustamos
+      const diffToFrom = (toFinal - from) / sevenDaysInMs; // Diferencia en días
+      if (diffToFrom < -7) {
+        toFinal = new Date(from.getTime() - sevenDaysInMs); // Ajustamos a -7 días
+      } else if (diffToFrom > 7) {
+        toFinal = new Date(from.getTime() + sevenDaysInMs); // Ajustamos a +7 días
+      }
     }
 
     // Validar que slotTo exista en el horario del profesor destino para ese mes

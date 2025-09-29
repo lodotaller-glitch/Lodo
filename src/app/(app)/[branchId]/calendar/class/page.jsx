@@ -371,7 +371,7 @@ export default function ProfessorClassPage({ searchParams }) {
           >
             {students.map((s) => (
               <li
-                key={`${s.id}-${s.origin || "regular"}`}
+                key={`${s._id}-${s.origin || "regular"}`}
                 className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4 hover:bg-black/[.02] transition"
               >
                 <label className="flex min-w-0 items-center gap-3">
