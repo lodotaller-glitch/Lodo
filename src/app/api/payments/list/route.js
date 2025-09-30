@@ -52,7 +52,7 @@ export async function GET(req) {
     if (payState) q["pay.state"] = payState;
 
     const items = await Enrollment.find(q)
-      .select("student professor year month pay state")
+      .select("student professor year month pay pay2 state")
       .populate("student", "name nombre email")
       .populate("professor", "name nombre")
       .sort({ "pay.state": 1, "pay.method": 1 })
@@ -66,9 +66,11 @@ export async function GET(req) {
       professorId: e.professor?._id ? String(e.professor._id) : undefined,
       professorName: e.professor?.name || e.professor?.nombre || "Profesor",
       pay: {
-        state: e.pay?.state || "pendiente",
-        method: e.pay?.method || "no_aplica",
-        amount: Number(e.pay?.amount || 0),
+        state: e.pay2?.state || e.pay?.state || "pendiente",
+        method: e.pay2?.method
+          ? e.pay?.method + " - " + e.pay2?.method
+          : e.pay?.method || "no_aplica",
+        amount: Number(e.pay2?.amount || 0) + Number(e.pay?.amount || 0),
         currency: e.pay?.currency || "ARS",
         reference: e.pay?.reference || "",
       },

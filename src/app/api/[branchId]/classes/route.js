@@ -64,7 +64,7 @@ export async function GET(req, { params }) {
       month,
       state: "activa",
     })
-      .select("student chosenSlots assigned pay.state")
+      .select("student chosenSlots assigned pay.state pay2.state")
       .populate("student", "name")
       .lean();
     const enById = new Map(enrollments.map((e) => [String(e._id), e]));
@@ -80,7 +80,9 @@ export async function GET(req, { params }) {
           s.endMin === endMin
       );
       if (match) {
-        const payState = e?.pay?.state || "pendiente";
+        const payState = e?.pay2?.state || e?.pay?.state || "pendiente";
+        console.log("payState", payState);
+        
         regularBase.push({
           id: String(e.student._id),
           name: e.student.name,
@@ -147,7 +149,7 @@ export async function GET(req, { params }) {
     const rescheduleIn = resInDocs.map((r) => {
       const enId = r.enrollment ? String(r.enrollment) : null;
       const en = enId ? enById.get(enId) : null;
-      const payState = en?.pay?.state || "pendiente";
+      const payState =  en?.pay2?.state || en?.pay?.state || "pendiente";
       return {
         id: r.student ? String(r.student._id || r.student) : undefined,
         name: r.student?.name || "Alumno",

@@ -23,8 +23,8 @@ export async function GET(req) {
     const branchId = searchParams.get("branchId");
     const professorId = searchParams.get("professorId");
     const stateParam = searchParams.get("state"); // opcional: activa/cancelada
-    const methodParam = searchParams.get("method"); // opcional: transferencia/efectivo/otro/no_aplica
-    const onlyPaid = searchParams.get("onlyPaid") === "true"; // por defecto false
+    const methodParam = searchParams.get("method"); // opcional
+    const onlyPaid = searchParams.get("onlyPaid") === "true"; // default false
 
     if (
       !Number.isInteger(year) ||
@@ -38,171 +38,151 @@ export async function GET(req) {
       );
     }
 
-    const matchBase = {
-      year,
-      month,
-    };
-    
+    const matchBase = { year, month };
     if (branchId) {
       const bid = toObjId(branchId);
       if (bid) matchBase.branch = bid;
     }
-    // Por defecto consideramos inscripciones "activa" (podés quitar esta línea si querés incluir todas)
-    if (stateParam) {
-      matchBase.state = stateParam;
-    } else {
-      matchBase.state = "activa";
-    }
-
+    matchBase.state = stateParam || "activa";
     if (professorId) {
       const pid = toObjId(professorId);
       if (pid) matchBase.professor = pid;
     }
 
-    if (methodParam) {
-      matchBase["pay.method"] = methodParam;
-    }
+    // Estados considerados "cobrados"
+    const paidStates = onlyPaid ? ["pagado"] : ["pagado", "señado"];
 
-    const matchForMethods = {
-      ...matchBase,
-      ...(methodParam ? { "pay.method": methodParam } : {}),
-      ...(onlyPaid
-        ? { "pay.state": "pagado" }
-        : { "pay.state": { $in: ["pagado", "señado"] } }),
-    };
-
-    // facet para: byMethod (pagados), byState (todos), byProfessor (pagados)
     const pipeline = [
       { $match: matchBase },
+      // Empaquetamos pay y pay2 como array de "payments"
+      {
+        $project: {
+          professor: 1,
+          payments: [
+            {
+              state: { $ifNull: ["$pay.state", "pendiente"] },
+              method: { $ifNull: ["$pay.method", "no_aplica"] },
+              amount: { $ifNull: ["$pay.amount", 0] },
+            },
+            {
+              state: { $ifNull: ["$pay2.state", "pendiente"] },
+              method: { $ifNull: ["$pay2.method", "no_aplica"] },
+              amount: { $ifNull: ["$pay2.amount", 0] },
+            },
+          ],
+        },
+      },
+      { $unwind: "$payments" },
+
       {
         $facet: {
+          // 1) byState: TODOS los pagos por estado
           byState: [
             {
               $group: {
-                _id: "$pay.state",
+                _id: "$payments.state",
                 count: { $sum: 1 },
-                amount: { $sum: { $ifNull: ["$pay.amount", 0] } },
+                amount: { $sum: { $ifNull: ["$payments.amount", 0] } },
               },
             },
           ],
-          allPaidDocs: [
-            { $match: matchForMethods },
+
+          // 2) byMethod: SOLO pagos cobrados (respeta methodParam si viene)
+          byMethod: [
+            {
+              $match: {
+                "payments.state": { $in: paidStates },
+                ...(methodParam ? { "payments.method": methodParam } : {}),
+              },
+            },
+            {
+              $group: {
+                _id: "$payments.method",
+                count: { $sum: 1 },
+                amount: { $sum: { $ifNull: ["$payments.amount", 0] } },
+              },
+            },
+          ],
+
+          // 3) paidDocs para byProfessor (en JS)
+          paidDocs: [
+            {
+              $match: {
+                "payments.state": { $in: paidStates },
+                ...(methodParam ? { "payments.method": methodParam } : {}),
+              },
+            },
             {
               $project: {
                 professor: 1,
-                "pay.method": 1,
-                "pay.amount": 1,
+                payments: {
+                  method: "$payments.method",
+                  amount: "$payments.amount",
+                },
               },
             },
           ],
-        },
-      },
-      {
-        $project: {
-          byState: 1,
-          paid: "$allPaidDocs",
-        },
-      },
-      // segundo stage para computar byMethod y byProfessor sobre paid en memoria del pipeline
-      {
-        $project: {
-          byState: 1,
-          byMethod: {
-            $map: {
-              input: { $setUnion: ["$paid.pay.method", []] },
-              as: "m",
-              in: {
-                method: "$$m",
-                count: {
-                  $size: {
-                    $filter: {
-                      input: "$paid",
-                      as: "p",
-                      cond: { $eq: ["$$p.pay.method", "$$m"] },
-                    },
-                  },
-                },
-                amount: {
-                  $sum: {
-                    $map: {
-                      input: {
-                        $filter: {
-                          input: "$paid",
-                          as: "p",
-                          cond: { $eq: ["$$p.pay.method", "$$m"] },
-                        },
-                      },
-                      as: "x",
-                      in: { $ifNull: ["$$x.pay.amount", 0] },
-                    },
-                  },
-                },
-              },
-            },
-          },
-          paid: 1,
         },
       },
     ];
 
-    // Ejecutar
-    const [res] = await Enrollment.aggregate(pipeline);
+    const [agg] = await Enrollment.aggregate(pipeline);
 
-    // Armar byProfessor (pagados), con nombres
-    let byProfessor = [];
-    if (res?.paid?.length) {
-      // agrupar en JS por professor
-      const map = new Map();
-      for (const doc of res.paid) {
-        const pid = String(doc.professor || "");
-        const curr = map.get(pid) || {
-          professorId: pid,
-          totalAmount: 0,
-          count: 0,
-          byMethod: {},
-        };
-        const method = doc?.pay?.method || "no_aplica";
-        const amount = Number(doc?.pay?.amount || 0);
-        curr.totalAmount += amount;
-        curr.count += 1;
-        curr.byMethod[method] = (curr.byMethod[method] || 0) + amount;
-        map.set(pid, curr);
-      }
-      byProfessor = Array.from(map.values());
-
-      // traer nombres
-      const profIds = byProfessor
-        .filter((x) => x.professorId)
-        .map((x) => toObjId(x.professorId))
-        .filter(Boolean);
-      const users = await User.find({ _id: { $in: profIds } })
-        .select("_id name nombre")
-        .lean();
-      const nameById = new Map(
-        users.map((u) => [String(u._id), u.name || u.nombre || "Profesor"])
-      );
-      byProfessor = byProfessor.map((x) => ({
-        ...x,
-        professorName: nameById.get(x.professorId) || "Profesor",
-      }));
-    }
-
-    // Normalizar byMethod a objeto fijo de métodos
+    // --- byMethod normalizado a objeto fijo ---
     const methods = ["transferencia", "efectivo", "otro", "no_aplica"];
     const byMethodObj = {};
     for (const m of methods) {
-      const hit = res?.byMethod?.find((x) => x.method === m);
+      const hit = (agg?.byMethod || []).find((x) => x._id === m);
       byMethodObj[m] = {
         amount: Number(hit?.amount || 0),
         count: Number(hit?.count || 0),
       };
     }
 
-    // Normalizar byState a objeto fijo de estados
+    // --- byProfessor (sobre pagos cobrados) ---
+    const profMap = new Map();
+    for (const d of agg?.paidDocs || []) {
+      const pid = String(d.professor || "");
+      const m = d.payments?.method || "no_aplica";
+      const amt = Number(d.payments?.amount || 0);
+      const cur = profMap.get(pid) || {
+        professorId: pid,
+        totalAmount: 0,
+        count: 0,
+        byMethod: {},
+      };
+      cur.totalAmount += amt;
+      cur.count += 1;
+      cur.byMethod[m] = (cur.byMethod[m] || 0) + amt;
+      profMap.set(pid, cur);
+    }
+    let byProfessor = Array.from(profMap.values());
+
+    if (byProfessor.length) {
+      const profIds = byProfessor
+        .filter((x) => x.professorId)
+        .map((x) => toObjId(x.professorId))
+        .filter(Boolean);
+
+      const users = await User.find({ _id: { $in: profIds } })
+        .select("_id name nombre")
+        .lean();
+
+      const nameById = new Map(
+        users.map((u) => [String(u._id), u.name || u.nombre || "Profesor"])
+      );
+
+      byProfessor = byProfessor.map((x) => ({
+        ...x,
+        professorName: nameById.get(x.professorId) || "Profesor",
+      }));
+    }
+
+    // --- byState normalizado ---
     const states = ["pendiente", "señado", "pagado", "cancelado"];
     const byStateObj = {};
     for (const st of states) {
-      const hit = res?.byState?.find((x) => x._id === st);
+      const hit = (agg?.byState || []).find((x) => x._id === st);
       byStateObj[st] = {
         amount: Number(hit?.amount || 0),
         count: Number(hit?.count || 0),
@@ -220,6 +200,7 @@ export async function GET(req) {
       branchId,
       professorId,
       onlyPaid,
+      method: methodParam || null,
       byMethod: byMethodObj,
       byState: byStateObj,
       byProfessor,
