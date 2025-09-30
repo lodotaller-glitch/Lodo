@@ -317,7 +317,7 @@ export default function ProfilePage() {
                         {e.professor.name}
                       </span>
                     )}
-                    <PayBadge estado={e.pay?.state || "pendiente"} />
+                    <PayBadge estado={e.pay2?.state || e.pay?.state || "pendiente"} />
                   </div>
                 </li>
               ))}
