@@ -5,6 +5,8 @@ import ManageEnrollmentActions from "./ManageEnrollmentActions";
 import api from "@/lib/axios";
 import Swal from "sweetalert2";
 import { NewEnrollmentInline } from "./NewEnrollmentInline";
+import { useAuth } from "@/context/AuthContext";
+import { PaymentFields } from "./PaymentFields";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
@@ -84,6 +86,7 @@ export default function EnrollmentManagerById({
   const params = useParams();
   const studentId = propStudentId ?? params?.id;
   const branchId = branchIdProp || params?.branchId;
+  const { user } = useAuth();
 
   const [items, setItems] = useState([]); // enrollments
   const [error, setError] = useState("");
@@ -113,11 +116,25 @@ export default function EnrollmentManagerById({
       const init = {};
       for (const e of arr) {
         init[e._id] = {
-          state: e?.pay?.state || "pendiente",
-          method: e?.pay?.method || "no_aplica",
-          amount: e?.pay?.amount ?? "",
-          reference: e?.pay?.reference || "",
-          observations: e?.pay?.observations || "",
+          pay: {
+            state: e?.pay?.state || "pendiente",
+            method: e?.pay?.method || "no_aplica",
+            amount: e?.pay?.amount ?? "",
+            reference: e?.pay?.reference || "",
+            observations: e?.pay?.observations || "",
+            locked: !!e?.pay?.locked,
+          },
+
+          ...(e?.pay2 && {
+            pay2: {
+              state: e.pay2.state || "pendiente",
+              method: e.pay2.method || "no_aplica",
+              amount: e.pay2.amount ?? "",
+              reference: e.pay2.reference || "",
+              observations: e.pay2.observations || "",
+              locked: !!e.pay2.locked,
+            },
+          }),
         };
       }
       setDraftPay(init);
@@ -150,24 +167,74 @@ export default function EnrollmentManagerById({
     }
     await load();
   }
+  console.log(savingPay);
 
-  async function savePay(enrollmentId) {
-    const draft = draftPay[enrollmentId];
+  async function savePay(enrollmentId, which = "pay") {
+    const draft = draftPay[enrollmentId]?.[which];
     if (!draft) return;
-    setSavingPay((s) => ({ ...s, [enrollmentId]: true }));
-    try {
-      const res = await fetch(`/api/${branchId}/enrollments/pay`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enrollmentId, ...draft }),
+    const isAdmin = user?.role === "admin";
+    // clave única por insc + cual pago
+    const savingKey = `${enrollmentId}:${which}`;
+
+    // si NO es admin, pedimos confirmación antes de guardar (quedará bloqueado)
+    if (!isAdmin) {
+      const r = await Swal.fire({
+        title: "¿Guardar y bloquear el pago?",
+        html:
+          "Una vez guardado, <b>no vas a poder editarlo</b>.<br/>" +
+          "Si necesitás cambios luego, deberá hacerlo un <b>administrador</b>.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, guardar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: BRAND.main,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "No se pudo guardar el pago");
+      if (!r.isConfirmed) return;
+    }
+
+    setSavingPay((s) => ({ ...s, [savingKey]: true }));
+
+    try {
+      const payload = {
+        enrollmentId,
+        which,
+        state: draft.state,
+        method: draft.method,
+        amount: draft.amount === "" ? null : Number(draft.amount),
+        currency: "ARS",
+        reference: draft.reference,
+        observations: draft.observations,
+        finalize: true, // no-admin: se sellará en el backend
+      };
+
+      const { data } = await api.post(`/${branchId}/enrollments/pay`, payload);
+
+      if (!data?.ok)
+        throw new Error(data?.error || "No se pudo guardar el pago");
+
+      // feedback de éxito
+      if (!isAdmin) {
+        await Swal.fire({
+          title: "Pago guardado",
+          text: "El pago quedó bloqueado y no podrás editarlo. Un admin puede modificarlo si hiciera falta.",
+          icon: "success",
+          confirmButtonColor: BRAND.main,
+        });
+      } else {
+        // Para admin un toast más breve
+        await Swal.fire({
+          title: "Pago guardado",
+          icon: "success",
+          timer: 1200,
+          showConfirmButton: false,
+        });
+      }
+
       await load();
     } catch (e) {
-      alert(e.message);
+      Swal.fire({ title: "Error", text: e.message, icon: "error" });
     } finally {
-      setSavingPay((s) => ({ ...s, [enrollmentId]: false }));
+      setSavingPay((s) => ({ ...s, [savingKey]: false }));
     }
   }
 
@@ -283,140 +350,54 @@ export default function EnrollmentManagerById({
               </div>
 
               {/* Pago */}
-              <div className="mt-4 grid grid-cols-1 items-end gap-3 md:grid-cols-5">
-                <label className="flex flex-col">
-                  <span
-                    className="mb-1 text-xs"
-                    style={{ color: `${BRAND.text}99` }}
-                  >
-                    Estado de pago
-                  </span>
-                  <select
-                    className="w-full rounded-xl border bg-white/90 px-3 py-2 text-sm shadow-sm outline-none transition focus:ring-2"
-                    style={{ borderColor: BRAND.soft, color: BRAND.text }}
-                    value={draft.state || "pendiente"}
-                    onChange={(ev) =>
-                      setDraftPay((p) => ({
-                        ...p,
-                        [e._id]: { ...p[e._id], state: ev.target.value },
-                      }))
-                    }
-                  >
-                    {PAY_STATES.map((x) => (
-                      <option key={x} value={x}>
-                        {x}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="flex flex-col">
-                  <span
-                    className="mb-1 text-xs"
-                    style={{ color: `${BRAND.text}99` }}
-                  >
-                    Método
-                  </span>
-                  <select
-                    className="w-full rounded-xl border bg-white/90 px-3 py-2 text-sm shadow-sm outline-none transition focus:ring-2"
-                    style={{ borderColor: BRAND.soft, color: BRAND.text }}
-                    value={draft.method || "no_aplica"}
-                    onChange={(ev) =>
-                      setDraftPay((p) => ({
-                        ...p,
-                        [e._id]: { ...p[e._id], method: ev.target.value },
-                      }))
-                    }
-                  >
-                    {PAY_METHODS.map((x) => (
-                      <option key={x} value={x}>
-                        {x}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="flex flex-col">
-                  <span
-                    className="mb-1 text-xs"
-                    style={{ color: `${BRAND.text}99` }}
-                  >
-                    Monto
-                  </span>
-                  <input
-                    type="number"
-                    className="w-full rounded-xl border bg-white/90 px-3 py-2 text-sm shadow-sm outline-none transition focus:ring-2"
-                    style={{ borderColor: BRAND.soft, color: BRAND.text }}
-                    value={draft.amount ?? ""}
-                    onChange={(ev) =>
+              <PaymentFields
+                e={e}
+                which="pay"
+                label="Pago principal"
+                draftPay={draftPay}
+                setDraftPay={setDraftPay}
+                isAdmin={user?.role === "admin"}
+                savingPay={savingPay}
+                savePay={savePay}
+              />
+              {!draftPay[e._id]?.pay2 ? (
+                <div className="mt-2">
+                  <button
+                    onClick={() =>
                       setDraftPay((p) => ({
                         ...p,
                         [e._id]: {
                           ...p[e._id],
-                          amount:
-                            ev.target.value === ""
-                              ? ""
-                              : Number(ev.target.value),
+                          pay2: {
+                            state: "pendiente",
+                            method: "no_aplica",
+                            amount: "",
+                            reference: "",
+                            observations: "",
+                            locked: false,
+                          },
                         },
                       }))
                     }
-                  />
-                </label>
-
-                <label className="flex flex-col">
-                  <span
-                    className="mb-1 text-xs"
-                    style={{ color: `${BRAND.text}99` }}
+                    className="rounded-xl border px-3 py-1.5 text-sm shadow-sm"
+                    style={{ borderColor: BRAND.main, color: BRAND.text }}
+                    disabled={!!e.pay2} // si el back ya lo trae, evitá duplicar
                   >
-                    Referencia
-                  </span>
-                  <input
-                    className="w-full rounded-xl border bg-white/90 px-3 py-2 text-sm shadow-sm outline-none transition focus:ring-2"
-                    style={{ borderColor: BRAND.soft, color: BRAND.text }}
-                    value={draft.reference || ""}
-                    onChange={(ev) =>
-                      setDraftPay((p) => ({
-                        ...p,
-                        [e._id]: { ...p[e._id], reference: ev.target.value },
-                      }))
-                    }
-                  />
-                </label>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => savePay(e._id)}
-                    disabled={!!savingPay[e._id]}
-                    className="w-full rounded-xl px-4 py-2 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
-                    style={{ backgroundColor: BRAND.main, color: "#fff" }}
-                  >
-                    {savingPay[e._id] ? "Guardando…" : "Guardar pago"}
+                    + Agregar segundo pago
                   </button>
                 </div>
-              </div>
-
-              <div className="mt-3">
-                <label className="flex flex-col">
-                  <span
-                    className="mb-1 text-xs"
-                    style={{ color: `${BRAND.text}99` }}
-                  >
-                    Observaciones
-                  </span>
-                  <textarea
-                    className="w-full rounded-xl border bg-white/90 px-3 py-2 text-sm shadow-sm outline-none transition focus:ring-2"
-                    rows={2}
-                    style={{ borderColor: BRAND.soft, color: BRAND.text }}
-                    value={draft.observations || ""}
-                    onChange={(ev) =>
-                      setDraftPay((p) => ({
-                        ...p,
-                        [e._id]: { ...p[e._id], observations: ev.target.value },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
+              ) : (
+                <PaymentFields
+                  e={e}
+                  which="pay2"
+                  label="Segundo pago"
+                  draftPay={draftPay}
+                  setDraftPay={setDraftPay}
+                  isAdmin={user?.role === "admin"}
+                  savingPay={savingPay}
+                  savePay={savePay}
+                />
+              )}
             </div>
           );
         })}

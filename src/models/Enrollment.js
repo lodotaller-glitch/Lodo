@@ -25,6 +25,11 @@ const PaymentSchema = new Schema(
     currency: { type: String, default: "ARS" },
     reference: { type: String }, // id de transferencia, recibo, etc.
     observations: { type: String },
+
+    // NUEVO: bloqueo de edición
+    locked: { type: Boolean, default: false },
+    lockedAt: { type: Date },
+    lockedBy: { type: mongoose.Types.ObjectId, ref: "User" },
   },
   { _id: false, timestamps: true }
 );
@@ -125,7 +130,7 @@ const EnrollmentSchema = new Schema(
     assigned: { type: Boolean, default: false, index: true },
 
     pay: { type: PaymentSchema, default: () => ({}) },
-
+    pay2: { type: PaymentSchema, required: false, default: undefined },
     // Quién creó/asignó (admin o redes)
     createBy: { type: mongoose.Types.ObjectId, ref: "User" },
   },
