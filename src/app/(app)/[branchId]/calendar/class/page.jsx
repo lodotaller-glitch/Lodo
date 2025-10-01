@@ -107,7 +107,7 @@ export default function ProfessorClassPage({ searchParams }) {
   function removeStudent(id) {
     if (!user || !branchId) return;
     const st = students.find((s) => s.id === id);
-    
+
     if (!st) return;
     setStudents((arr) =>
       arr.filter((s) => !(s.id === id && s.origin === st.origin))
@@ -121,7 +121,7 @@ export default function ProfessorClassPage({ searchParams }) {
         professorId: parseSlot(slot).professorId,
         start,
         origin: st.origin || (st.enrollmentId ? "regular" : "adhoc"),
-        slot
+        slot,
       }),
     }).catch(() => {});
   }
@@ -372,25 +372,26 @@ export default function ProfessorClassPage({ searchParams }) {
             {students.map((s) => (
               <li
                 key={`${s._id}-${s.origin || "regular"}`}
-                className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4 hover:bg-black/[.02] transition"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-3 py-2 sm:px-4 hover:bg-black/[.02] transition"
               >
-                <label className="flex min-w-0 items-center gap-3">
+                <label className="flex min-w-0 items-center justify-center sm:justify-start gap-3 flex-1">
                   <input
                     type="checkbox"
                     checked={s.present}
                     onChange={() => toggleAttendance(s)}
-                    className="h-4 w-4 rounded focus:outline-none focus:ring-2"
+                    className="h-4 w-4 rounded focus:outline-none focus:ring-2 shrink-0"
                     style={{ accentColor: BRAND.main }}
                   />
                   <span
-                    className="truncate font-medium"
+                    className="font-medium leading-tight break-words sm:truncate"
                     style={{ color: BRAND.text }}
                   >
                     {s.name}
                   </span>
+
                   {s.origin === "adhoc" && (
                     <span
-                      className="rounded-full px-2 py-0.5 text-[11px] uppercase tracking-wide"
+                      className="rounded-full px-2 py-0.5 text-[11px] uppercase tracking-wide shrink-0"
                       style={{
                         backgroundColor: `${BRAND.soft}`,
                         border: `1px solid ${BRAND.main}55`,
@@ -402,10 +403,10 @@ export default function ProfessorClassPage({ searchParams }) {
                   )}
                 </label>
 
-                <div className="ml-auto flex items-center gap-2">
+                <div className="mt-2 sm:mt-0 ml-0 sm:ml-auto flex flex-wrap items-center justify-center sm:justify-start gap-2">
                   {s.enrollmentId ? (
                     <span
-                      className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+                      className="rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0"
                       style={{
                         backgroundColor:
                           s.payState === "pagado"
@@ -447,7 +448,7 @@ export default function ProfessorClassPage({ searchParams }) {
                   {s._id ? (
                     <a
                       href={`/professor/students/${s._id}/edit`}
-                      className="rounded-lg px-2 py-1 text-xs transition hover:bg-black/[.04] focus:outline-none focus:ring-2"
+                      className="rounded-lg px-2 py-1 text-xs transition hover:bg-black/[.04] focus:outline-none focus:ring-2 shrink-0"
                       style={{ color: BRAND.main }}
                     >
                       Editar
@@ -456,7 +457,7 @@ export default function ProfessorClassPage({ searchParams }) {
 
                   <button
                     onClick={() => removeStudent(s.id)}
-                    className="rounded-lg px-2 py-1 text-xs transition hover:shadow-sm focus:outline-none focus:ring-2"
+                    className="rounded-lg px-2 py-1 text-xs transition hover:shadow-sm focus:outline-none focus:ring-2 shrink-0"
                     style={{
                       border: `1px solid ${BRAND.main}`,
                       backgroundColor: `${BRAND.soft}66`,

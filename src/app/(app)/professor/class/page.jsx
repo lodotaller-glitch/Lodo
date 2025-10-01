@@ -330,9 +330,9 @@ export default function ProfessorClassPage({ searchParams }) {
             {students.map((s) => (
               <li
                 key={`${s.id}-${s.origin || "regular"}`}
-                className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4 hover:bg-black/[.02] transition"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-3 py-2 sm:px-4 hover:bg-black/[.02] transition"
               >
-                <label className="flex min-w-0 items-center gap-3">
+                <label className="flex min-w-0 items-center justify-center sm:justify-start gap-3 flex-1">
                   <input
                     type="checkbox"
                     checked={s.present}
@@ -360,7 +360,7 @@ export default function ProfessorClassPage({ searchParams }) {
                   )}
                 </label>
 
-                <div className="ml-auto flex items-center gap-2">
+                <div className="mt-2 sm:mt-0 ml-0 sm:ml-auto flex flex-wrap items-center justify-center sm:justify-start gap-2">
                   {s.enrollmentId ? (
                     <span
                       className="rounded-full px-2.5 py-0.5 text-xs font-medium"
