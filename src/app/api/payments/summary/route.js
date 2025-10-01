@@ -58,18 +58,38 @@ export async function GET(req) {
       {
         $project: {
           professor: 1,
-          payments: [
-            {
-              state: { $ifNull: ["$pay.state", "pendiente"] },
-              method: { $ifNull: ["$pay.method", "no_aplica"] },
-              amount: { $ifNull: ["$pay.amount", 0] },
-            },
-            {
-              state: { $ifNull: ["$pay2.state", "pendiente"] },
-              method: { $ifNull: ["$pay2.method", "no_aplica"] },
-              amount: { $ifNull: ["$pay2.amount", 0] },
-            },
-          ],
+          payments: {
+            $concatArrays: [
+              // Siempre incluimos pay si tiene algo (si querés, también podés condicionar este)
+              [
+                {
+                  state: "$pay.state",
+                  method: "$pay.method",
+                  amount: { $ifNull: ["$pay.amount", 0] },
+                },
+              ],
+              // Solo agregamos pay2 si "existe"
+              {
+                $cond: [
+                  {
+                    $or: [
+                      { $ne: [{ $ifNull: ["$pay2.state", null] }, null] },
+                      { $ne: [{ $ifNull: ["$pay2.method", null] }, null] },
+                      { $gt: [{ $ifNull: ["$pay2.amount", 0] }, 0] },
+                    ],
+                  },
+                  [
+                    {
+                      state: "$pay2.state",
+                      method: "$pay2.method",
+                      amount: { $ifNull: ["$pay2.amount", 0] },
+                    },
+                  ],
+                  [], // si no existe, no agregamos nada
+                ],
+              },
+            ],
+          },
         },
       },
       { $unwind: "$payments" },
@@ -181,6 +201,7 @@ export async function GET(req) {
     // --- byState normalizado ---
     const states = ["pendiente", "señado", "pagado", "cancelado"];
     const byStateObj = {};
+
     for (const st of states) {
       const hit = (agg?.byState || []).find((x) => x._id === st);
       byStateObj[st] = {

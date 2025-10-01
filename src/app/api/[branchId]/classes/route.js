@@ -81,8 +81,6 @@ export async function GET(req, { params }) {
       );
       if (match) {
         const payState = e?.pay2?.state || e?.pay?.state || "pendiente";
-        console.log("payState", payState);
-        
         regularBase.push({
           id: String(e.student._id),
           name: e.student.name,

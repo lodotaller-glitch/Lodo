@@ -167,7 +167,6 @@ export default function EnrollmentManagerById({
     }
     await load();
   }
-  console.log(savingPay);
 
   async function savePay(enrollmentId, which = "pay") {
     const draft = draftPay[enrollmentId]?.[which];
