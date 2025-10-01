@@ -312,7 +312,7 @@ export default function EnrollmentManagerById({
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
                   <button
                     onClick={() => deleteEnrollment(e._id)}
                     className="rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition hover:shadow"
