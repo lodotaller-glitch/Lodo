@@ -311,6 +311,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
     const dayISO = dateOnlyISO(new Date(a.date));
     const pidFromAtt = a.professor ? String(a.professor) : "";
     const k = `${dayISO}|${slotKey(a.slotSnapshot, pidFromAtt)}`;
+    
     attendanceByKey.set(k, {
       status: a.status,
       _id: String(a._id),

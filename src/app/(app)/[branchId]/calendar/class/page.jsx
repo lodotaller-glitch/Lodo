@@ -69,7 +69,7 @@ export default function ProfessorClassPage({ searchParams }) {
     const updated = { ...student, present: !student.present };
     setStudents((arr) =>
       arr.map((s) =>
-        s.id === student.id && s.origin === student.origin ? updated : s
+        s._id === student._id && s.origin === student.origin ? updated : s
       )
     );
     fetch(`/api/${branchId}/classes`, {
@@ -77,7 +77,7 @@ export default function ProfessorClassPage({ searchParams }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         enrollmentId: student.enrollmentId || null,
-        studentId: student.id,
+        studentId: student._id,
         professorId: parseSlot(slot).professorId,
         slot,
         start,
@@ -369,9 +369,9 @@ export default function ProfessorClassPage({ searchParams }) {
             className="mt-3 divide-y rounded-xl border bg-white/70"
             style={{ borderColor: BRAND.soft }}
           >
-            {students.map((s) => (
+            {students.map((s, i) => (
               <li
-                key={`${s._id}-${s.origin || "regular"}`}
+                key={`${s._id}-${s.origin || "regular"}-${i}`}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-3 py-2 sm:px-4 hover:bg-black/[.02] transition"
               >
                 <label className="flex min-w-0 items-center justify-center sm:justify-start gap-3 flex-1">

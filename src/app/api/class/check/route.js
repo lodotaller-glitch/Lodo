@@ -39,6 +39,15 @@ function monthAnchorUTC(d) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
 }
 
+function buildSlotSnapshot(slot) {
+  return {
+    professorId: String(slot.professorId),
+    dayOfWeek: slot.dayOfWeek,
+    startMin: slot.startMin,
+    endMin: slot.endMin,
+  };
+}
+
 async function handleCheck({ req, payload }) {
   await dbConnect();
 
@@ -101,19 +110,23 @@ async function handleCheck({ req, payload }) {
     .select("_id enrollment origin")
     .lean();
 
+  const slotSnapshot = buildSlotSnapshot(slot);
+
   if (preScheduled) {
-    await Attendance.updateOne(
-      { _id: preScheduled._id },
-      {
-        $set: {
-          status: "presente",
-          markedBy: actor._id,
-          markedAt: new Date(),
-          // mantenemos origin/slotSnapshot/enrollment como estén
-        },
-        $unset: { notes: "" }, // opcional
-      }
-    );
+    const update = {
+      $set: {
+        status: "presente",
+        markedBy: actor._id,
+        markedAt: new Date(),
+      },
+      $unset: { notes: "" },
+    };
+    // Sólo seteamos slotSnapshot si no existe aún para no pisar históricos
+    if (!preScheduled.slotSnapshot) {
+      update.$set.slotSnapshot = slotSnapshot;
+    }
+
+    await Attendance.updateOne({ _id: preScheduled._id }, update);
     return new NextResponse("OK (programada)", {
       status: 200,
       headers: { "content-type": "text/plain" },
@@ -167,6 +180,7 @@ async function handleCheck({ req, payload }) {
         status: "presente",
         origin: "regular",
         removed: false,
+        slotSnapshot,
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
@@ -206,6 +220,7 @@ async function handleCheck({ req, payload }) {
         origin: "regular",
         reschedule: resch._id,
         removed: false,
+        slotSnapshot,
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );

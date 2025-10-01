@@ -68,7 +68,7 @@ export default function ProfessorClassPage({ searchParams }) {
     const updated = { ...student, present: !student.present };
     setStudents((arr) =>
       arr.map((s) =>
-        s.id === student.id && s.origin === student.origin ? updated : s
+        s._id === student._id && s.origin === student.origin ? updated : s
       )
     );
     fetch(`/api/${user.branch}/classes`, {
@@ -76,7 +76,7 @@ export default function ProfessorClassPage({ searchParams }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         enrollmentId: student.enrollmentId || null,
-        studentId: student.id,
+        studentId: student._id,
         professorId: parseSlot(slot).professorId,
         slot,
         start,
