@@ -105,23 +105,26 @@ export default function ProfessorClassPage({ searchParams }) {
 
   function removeStudent(id) {
     if (!user) return;
-    const st = students.find((s) => s.id === id);
+    const st = students.find((s) => s._id === id);
+    
     if (!st) return;
     setStudents((arr) =>
-      arr.filter((s) => !(s.id === id && s.origin === st.origin))
+      arr.filter((s) => !(s._id === id && s.origin === st.origin))
     );
     fetch(`/api/${user.branch}/classes`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         enrollmentId: st.enrollmentId || null,
-        studentId: st.id,
+        studentId: st._id,
         professorId: parseSlot(slot).professorId,
         start,
         origin: st.origin || (st.enrollmentId ? "regular" : "adhoc"),
+        slot,
       }),
     }).catch(() => {});
   }
+
 
   // ----- QR directo al API -----
   const classKey = useMemo(() => {
@@ -327,9 +330,9 @@ export default function ProfessorClassPage({ searchParams }) {
             className="mt-3 divide-y rounded-xl border bg-white/70"
             style={{ borderColor: BRAND.soft }}
           >
-            {students.map((s) => (
+            {students.map((s, i) => (
               <li
-                key={`${s.id}-${s.origin || "regular"}`}
+                key={`${s._id}-${s.origin || "regular"}-${i}`}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-3 py-2 sm:px-4 hover:bg-black/[.02] transition"
               >
                 <label className="flex min-w-0 items-center justify-center sm:justify-start gap-3 flex-1">
@@ -402,7 +405,7 @@ export default function ProfessorClassPage({ searchParams }) {
                     </span>
                   ) : null}
 
-                  {s._id ? (
+                  {s._id && (
                     <a
                       href={`/professor/students/${s._id}/edit`}
                       className="rounded-lg px-2 py-1 text-xs transition hover:bg-black/[.04] focus:outline-none focus:ring-2"
@@ -410,10 +413,10 @@ export default function ProfessorClassPage({ searchParams }) {
                     >
                       Editar
                     </a>
-                  ) : null}
+                  )}
 
                   <button
-                    onClick={() => removeStudent(s.id)}
+                    onClick={() => removeStudent(s._id)}
                     className="rounded-lg px-2 py-1 text-xs transition hover:shadow-sm focus:outline-none focus:ring-2"
                     style={{
                       border: `1px solid ${BRAND.main}`,

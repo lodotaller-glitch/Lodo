@@ -106,12 +106,12 @@ export default function ProfessorClassPage({ searchParams }) {
 
   function removeStudent(id) {
     if (!user || !branchId) return;
-    const st = students.find((s) => s.id === id);
-
+    const st = students.find((s) => s._id === id);
     if (!st) return;
     setStudents((arr) =>
-      arr.filter((s) => !(s.id === id && s.origin === st.origin))
+      arr.filter((s) => !(s._id === id && s.origin === st.origin))
     );
+    
     fetch(`/api/${branchId}/classes`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -447,7 +447,7 @@ export default function ProfessorClassPage({ searchParams }) {
 
                   {s._id ? (
                     <a
-                      href={`/professor/students/${s._id}/edit`}
+                      href={`/${branchId}/students/${s._id}/edit`}
                       className="rounded-lg px-2 py-1 text-xs transition hover:bg-black/[.04] focus:outline-none focus:ring-2 shrink-0"
                       style={{ color: BRAND.main }}
                     >
@@ -456,7 +456,7 @@ export default function ProfessorClassPage({ searchParams }) {
                   ) : null}
 
                   <button
-                    onClick={() => removeStudent(s.id)}
+                    onClick={() => removeStudent(s._id)}
                     className="rounded-lg px-2 py-1 text-xs transition hover:shadow-sm focus:outline-none focus:ring-2 shrink-0"
                     style={{
                       border: `1px solid ${BRAND.main}`,

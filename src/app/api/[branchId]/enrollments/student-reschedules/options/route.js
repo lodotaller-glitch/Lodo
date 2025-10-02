@@ -44,7 +44,7 @@ export async function GET(req, { params }) {
     windowStart.setUTCDate(windowStart.getUTCDate() - 7); // 7 días antes
     windowEnd.setUTCDate(windowEnd.getUTCDate() + 7); // 7 días después
 
-    const now = new Date(); // Fecha actual
+    const now = new Date(Date.now() - 3 * 60 * 60 * 1000);
 
     // ===== 1) Índice de slots donde el estudiante YA está =====
     const months = new Set([
@@ -97,7 +97,18 @@ export async function GET(req, { params }) {
     // Iteramos sobre el rango de fechas
     let iter = new Date(iterStart);
     while (iter <= windowEnd) {
-      if (iter < now || isFifthUTC(iter)) {
+      const dayEnd = new Date(
+        Date.UTC(
+          iter.getUTCFullYear(),
+          iter.getUTCMonth(),
+          iter.getUTCDate(),
+          23,
+          59,
+          59,
+          999
+        )
+      );
+      if (dayEnd <= now || isFifthUTC(iter)) {
         iter.setUTCDate(iter.getUTCDate() + 1);
         continue;
       }

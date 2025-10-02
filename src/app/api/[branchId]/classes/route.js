@@ -54,6 +54,7 @@ export async function GET(req, { params }) {
     const dayStart = startOfDayUTC(date);
     const dayEnd = endOfDayUTC(date);
 
+
     const { professorId, dayOfWeek, startMin, endMin } = parseSlot(slot);
 
     // 1) Enrollments regulares que matchean la franja
@@ -572,7 +573,7 @@ export async function POST(req, { params }) {
 
       return NextResponse.json({
         student: {
-          id: String(enrollment.student._id),
+          _id: String(enrollment.student._id),
           name: enrollment.student.name,
           enrollmentId: String(enrollment._id),
           present: false,
@@ -613,7 +614,7 @@ export async function POST(req, { params }) {
 
     return NextResponse.json({
       student: {
-        id: String(student._id),
+        _id: String(student._id),
         name: student.name || email,
         enrollmentId: null,
         present: attAdhoc.status === "presente",

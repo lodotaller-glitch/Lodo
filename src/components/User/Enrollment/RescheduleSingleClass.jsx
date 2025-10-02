@@ -33,11 +33,12 @@ export default function RescheduleSingleClass({ enrollment, onDone }) {
   }, [user]);
 
   useEffect(() => {
+    if (!branchId) return;
     if (!enrollment?._id) return;
     let alive = true;
     setLoading(true);
     setError("");
-    getEnrollmentOccurrences(enrollment._id)
+    getEnrollmentOccurrences(enrollment._id, branchId)
       .then(({ occurrences }) => {
         if (alive) setOccurrences(occurrences || []);
       })
@@ -48,12 +49,15 @@ export default function RescheduleSingleClass({ enrollment, onDone }) {
     return () => {
       alive = false;
     };
-  }, [enrollment?._id]);
+  }, [enrollment?._id, branchId]);
 
   async function reloadOccurrences() {
     try {
       setLoading(true);
-      const { occurrences } = await getEnrollmentOccurrences(enrollment._id);
+      const { occurrences } = await getEnrollmentOccurrences(
+        enrollment._id,
+        branchId
+      );
       setOccurrences(occurrences || []);
     } catch (e) {
       setError(e?.message || "Error al cargar");
@@ -94,7 +98,7 @@ export default function RescheduleSingleClass({ enrollment, onDone }) {
         slotFrom: selectedSlot,
         branchId,
       });
-      getEnrollmentOccurrences(enrollment._id)
+      getEnrollmentOccurrences(enrollment._id, branchId)
         .then(({ occurrences }) => {
           setOccurrences(occurrences || []);
         })
