@@ -117,7 +117,7 @@ export default function ProfessorClassPage({ searchParams }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         enrollmentId: st.enrollmentId || null,
-        studentId: st.id,
+        studentId: st._id,
         professorId: parseSlot(slot).professorId,
         start,
         origin: st.origin || (st.enrollmentId ? "regular" : "adhoc"),
