@@ -21,12 +21,15 @@ export default function SlotPicker({
   month,
   value = [],
   onChange,
+  branchId: branchIdProp,
 }) {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const {branchId} = useParams();
+  const params = useParams();
+
+   const branchId = branchIdProp || params?.branchId;
 
   useEffect(() => {
     if (!year || !month) return;

@@ -102,9 +102,11 @@ export default function EnrollmentManagerById({
   );
 
   async function load() {
+    if (!branchId) return;
     if (!canLoad) return;
     setLoading(true);
     setError("");
+    
     try {
       const res = await fetch(
         `/api/${branchId}/enrollments/by-student/${studentId}`
@@ -345,7 +347,7 @@ export default function EnrollmentManagerById({
 
               {/* Actions (externas) */}
               <div className="mt-3">
-                <ManageEnrollmentActions enrollment={e} onChanged={load} />
+                <ManageEnrollmentActions enrollment={e} onChanged={load} branchId={branchId} />
               </div>
 
               {/* Pago */}

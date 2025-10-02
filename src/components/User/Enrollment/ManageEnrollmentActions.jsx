@@ -2,7 +2,10 @@
 import { useMemo, useState } from "react";
 import SlotPicker from "./SlotPicker";
 import RescheduleSingleClass from "./RescheduleSingleClass";
-import { updateEnrollmentSlots, upsertNextMonthEnrollment } from "@/functions/request/enrollments";
+import {
+  updateEnrollmentSlots,
+  upsertNextMonthEnrollment,
+} from "@/functions/request/enrollments";
 import { useParams } from "next/navigation";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
@@ -34,24 +37,40 @@ function Notice({ kind = "info", children }) {
     <div
       role="alert"
       className="rounded-xl border px-3 py-2 text-sm"
-      style={{ color: styles.fg, backgroundColor: styles.bg, borderColor: styles.br }}
+      style={{
+        color: styles.fg,
+        backgroundColor: styles.bg,
+        borderColor: styles.br,
+      }}
     >
       {children}
     </div>
   );
 }
 
-export default function ManageEnrollmentActions({ enrollment, onChanged }) {
+export default function ManageEnrollmentActions({
+  enrollment,
+  onChanged,
+  branchId: branchIdProp,
+}) {
   const [tab, setTab] = useState("mes"); // mes | siguiente | unica
   const [slotsMes, setSlotsMes] = useState(enrollment.chosenSlots || []);
   const [slotsNext, setSlotsNext] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const yearNext = useMemo(() => (enrollment.month === 12 ? enrollment.year + 1 : enrollment.year), [enrollment.year, enrollment.month]);
-  const monthNext = useMemo(() => (enrollment.month === 12 ? 1 : enrollment.month + 1), [enrollment.month]);
+  const yearNext = useMemo(
+    () => (enrollment.month === 12 ? enrollment.year + 1 : enrollment.year),
+    [enrollment.year, enrollment.month]
+  );
+  const monthNext = useMemo(
+    () => (enrollment.month === 12 ? 1 : enrollment.month + 1),
+    [enrollment.month]
+  );
 
-  const { branchId } = useParams();
+  const params = useParams();
+
+  const branchId = branchIdProp || params?.branchId;
 
   async function saveMes() {
     setSaving(true);
@@ -93,13 +112,25 @@ export default function ManageEnrollmentActions({ enrollment, onChanged }) {
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border p-4 sm:p-5" style={{ borderColor: BRAND.soft }}>
+    <div
+      className="space-y-4 rounded-2xl border p-4 sm:p-5"
+      style={{ borderColor: BRAND.soft }}
+    >
       {/* Tabs */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border p-1.5" style={{ borderColor: BRAND.soft, background: `linear-gradient(180deg, ${BRAND.soft}55, transparent)` }}>
+      <div
+        className="flex flex-wrap items-center gap-2 rounded-xl border p-1.5"
+        style={{
+          borderColor: BRAND.soft,
+          background: `linear-gradient(180deg, ${BRAND.soft}55, transparent)`,
+        }}
+      >
         <TabButton active={tab === "mes"} onClick={() => setTab("mes")}>
           Cambiar horario (este mes)
         </TabButton>
-        <TabButton active={tab === "siguiente"} onClick={() => setTab("siguiente")}>
+        <TabButton
+          active={tab === "siguiente"}
+          onClick={() => setTab("siguiente")}
+        >
           Cambiar horario (mes siguiente)
         </TabButton>
         <TabButton active={tab === "unica"} onClick={() => setTab("unica")}>
@@ -119,10 +150,12 @@ export default function ManageEnrollmentActions({ enrollment, onChanged }) {
             month={enrollment.month}
             value={slotsMes}
             onChange={setSlotsMes}
+            branchId={branchId}
           />
           <div className="flex items-center justify-between">
             <span className="text-xs" style={{ color: `${BRAND.text}99` }}>
-              Seleccionados: <b style={{ color: BRAND.text }}>{slotsMes.length}</b>
+              Seleccionados:{" "}
+              <b style={{ color: BRAND.text }}>{slotsMes.length}</b>
             </span>
             <button
               onClick={saveMes}
@@ -145,10 +178,12 @@ export default function ManageEnrollmentActions({ enrollment, onChanged }) {
             month={monthNext}
             value={slotsNext}
             onChange={setSlotsNext}
+            branchId={branchId}
           />
           <div className="flex items-center justify-between">
             <span className="text-xs" style={{ color: `${BRAND.text}99` }}>
-              Seleccionados: <b style={{ color: BRAND.text }}>{slotsNext.length}</b>
+              Seleccionados:{" "}
+              <b style={{ color: BRAND.text }}>{slotsNext.length}</b>
             </span>
             <button
               onClick={saveNext}
@@ -165,9 +200,13 @@ export default function ManageEnrollmentActions({ enrollment, onChanged }) {
       {/* Reprogramación única */}
       {tab === "unica" && (
         <div className="space-y-3">
-          <RescheduleSingleClass enrollment={enrollment} onDone={onChanged} />
+          <RescheduleSingleClass
+            enrollment={enrollment}
+            onDone={onChanged}
+          />
           <p className="text-xs" style={{ color: `${BRAND.text}99` }}>
-            Recordá: la reprogramación individual suele estar limitada a 1 por mes.
+            Recordá: la reprogramación individual suele estar limitada a 1 por
+            mes.
           </p>
         </div>
       )}
