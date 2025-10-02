@@ -8,13 +8,14 @@ function startOfMonthUTC(year, month) {
   return new Date(Date.UTC(Number(year), Number(month) - 1, 1, 0, 0, 0, 0));
 }
 
-export async function GET(req) {
+export async function GET(req, { params }) {
   try {
     await dbConnect();
     const url = new URL(req.url);
     const year = Number(url.searchParams.get("year"));
     const month = Number(url.searchParams.get("month"));
     const professorIdsParam = url.searchParams.get("professorIds"); // opcional: "id1,id2,..."
+    const { branchId } = await params;
 
     if (
       !Number.isInteger(year) ||
@@ -29,7 +30,7 @@ export async function GET(req) {
     }
 
     // Si vienen ids, filtramos; si no, tomamos todos los profesores activos
-    const filter = { role: "professor", state: true };
+    const filter = { role: "professor", state: true, branch:branchId };
     if (professorIdsParam) {
       const ids = professorIdsParam
         .split(",")

@@ -1,6 +1,11 @@
 import { NextResponse as ____NR } from "next/server";
 import dbConnect from "@/lib/dbConnect";
-import { Enrollment, ProfessorSchedule } from "@/models";
+import {
+  Enrollment,
+  ProfessorSchedule,
+  StudentReschedule,
+  Attendance,
+} from "@/models";
 
 function isFifthUTC(d) {
   const dow = d.getUTCDay();
@@ -146,6 +151,7 @@ export async function GET(req, { params }) {
             slotTo: s,
             capacity: sch.professor?.capacity || 10,
             professorId: profIdStr,
+            branchId, // <-- para que el conteo adhoc filtre por sede
           });
         }
       }
@@ -153,24 +159,88 @@ export async function GET(req, { params }) {
       iter.setUTCDate(iter.getUTCDate() + 1); // Avanzar al siguiente día
     }
 
-    // ===== 3) Capacidad por candidato (contar por profesor correcto) =====
+    // ===== 3) Capacidad por candidato (considerando reschedules y ad-hoc) =====
     const results = await Promise.all(
       days.map(async (d) => {
-        const y = new Date(d.to).getUTCFullYear();
-        const m = new Date(d.to).getUTCMonth() + 1;
-        const same = await Enrollment.countDocuments({
+        const start = new Date(d.to); // ocurrencia
+        const y = start.getUTCFullYear();
+        const m = start.getUTCMonth() + 1;
+
+        // Predicados de slot por igualdad exacta
+        const slotMatch = {
+          dayOfWeek: d.slotTo.dayOfWeek,
+          startMin: d.slotTo.startMin,
+          endMin: d.slotTo.endMin,
+        };
+
+        // 1) Base: inscripciones activas/assignadas con ese slot en el mes
+        const base = await Enrollment.countDocuments({
           professor: d.professorId,
           year: y,
           month: m,
           state: "activa",
           assigned: true,
-          chosenSlots: { $elemMatch: d.slotTo }, // Coincide ese slot semanal
+          chosenSlots: { $elemMatch: slotMatch },
         });
-        const capacityLeft = Math.max(0, (d.capacity ?? 0) - same);
+
+        // 2) Reprogramaciones que SALEN de esta ocurrencia
+        const movedOut = await StudentReschedule.countDocuments({
+          fromProfessor: d.professorId,
+          fromDate: start,
+          slotFrom: slotMatch,
+          branch: d.branchId || undefined, // opcional si querés anclar por sede
+        });
+
+        // 3) Reprogramaciones que ENTRAN a esta ocurrencia
+        const movedIn = await StudentReschedule.countDocuments({
+          toProfessor: d.professorId,
+          toDate: start,
+          slotTo: slotMatch,
+          branch: d.branchId || undefined,
+        });
+
+        // 4) Asistencias AD-HOC ya cargadas para esa ocurrencia (cualquier status, no removed)
+        const adhocAdded = await Attendance.countDocuments({
+          origin: "adhoc",
+          removed: false,
+          professor: d.professorId,
+          branch: typeof d.branchId !== "undefined" ? d.branchId : undefined,
+          date: start,
+          slotSnapshot: slotMatch,
+        });
+
+        const adhocRemoved = await Attendance.countDocuments({
+          origin: "adhoc",
+          removed: true,
+          professor: d.professorId,
+          branch: typeof d.branchId !== "undefined" ? d.branchId : undefined,
+          date: start,
+          slotSnapshot: slotMatch,
+        });
+
+        // Si por alguna razón hay más removidas que agregadas, no dejamos que el neto baje de 0
+        const adhocNet = Math.max(0, adhocAdded - adhocRemoved);
+
+        // Efectivos en el aula para esa ocurrencia
+        const effective = Math.max(0, base - movedOut) + movedIn + adhocNet;
+
+        const cap = d.capacity ?? 0;
+        const capacityLeft = Math.max(0, cap - effective);
+
         return {
           ...d,
           capacityLeft,
           status: capacityLeft > 0 ? "available" : "full",
+          meta: {
+            base,
+            movedOut,
+            movedIn,
+            adhocAdded,
+            adhocRemoved,
+            adhocNet,
+            effective,
+            cap,
+          },
         };
       })
     );

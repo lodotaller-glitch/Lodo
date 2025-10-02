@@ -259,11 +259,17 @@ export default function ReprogramarClasePage({ searchParams }) {
         </div>
       ) : (
         <ul className="grid gap-3">
-          {options.map((opt, idx) => (
-            <li key={idx}>
-              <OptionCard opt={opt} onChoose={handleChoose} disabled={saving} />
-            </li>
-          ))}
+          {options.map((opt, idx) =>
+            opt?.capacityLeft <= 0 ? null : (
+              <li key={idx}>
+                <OptionCard
+                  opt={opt}
+                  onChoose={handleChoose}
+                  disabled={saving}
+                />
+              </li>
+            )
+          )}
         </ul>
       )}
 
