@@ -46,6 +46,9 @@ export async function GET(req, { params }) {
 
     const now = new Date(Date.now() - 3 * 60 * 60 * 1000);
 
+    const startOfTodayUTC = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
     // ===== 1) Índice de slots donde el estudiante YA está =====
     const months = new Set([
       `${fromDate.getUTCFullYear()}-${fromDate.getUTCMonth() + 1}`,
@@ -154,7 +157,7 @@ export async function GET(req, { params }) {
             )
           );
 
-          if (start <= now) continue; // Excluir slots pasados
+          if (start <= startOfTodayUTC) continue; // Excluir slots pasados
 
           days.push({
             to: start.toISOString(),
