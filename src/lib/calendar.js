@@ -292,31 +292,48 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
   if (!enrollment) return [];
 
   const pid = enrollment.professor?._id?.toString() || "";
-  const profName =
-    enrollment.professor?.name || enrollment.professor?.nombre || "Profesor";
 
   // ——— 2) TODA la asistencia del estudiante en el mes (no solo adhoc) ———
   const attendanceDocs = await Attendance.find({
     student: studentId,
     date: { $gte: monthStart, $lte: monthEnd },
-    removed: { $ne: true },
+    // removed: { $ne: true },
   })
-    .select("_id date slotSnapshot professor status origin")
+    .select("_id date slotSnapshot professor status origin removed")
     .lean();
 
   // Índice: `${dayISO}|${slotKey(slotSnapshot, profId)}`
   const attendanceByKey = new Map();
   for (const a of attendanceDocs) {
     if (!a.slotSnapshot) continue;
+    if (a.removed === true) continue; // 👈 removed no aporta status
+
     const dayISO = dateOnlyISO(new Date(a.date));
     const pidFromAtt = a.professor ? String(a.professor) : "";
     const k = `${dayISO}|${slotKey(a.slotSnapshot, pidFromAtt)}`;
-    
+
     attendanceByKey.set(k, {
       status: a.status,
       _id: String(a._id),
       origin: a.origin || null,
     });
+  }
+
+  const removedRegularKeys = new Set(); // `${profId}|${dayISO}|${slotKey}`
+  for (const a of attendanceDocs) {
+    if (
+      a.removed === true &&
+      a.slotSnapshot &&
+      (a.origin === "regular" || !a.origin)
+    ) {
+      const dayISO = dateOnlyISO(new Date(a.date));
+      const pidFromAtt = a.professor ? String(a.professor) : "";
+      const k = `${pidFromAtt}|${dayISO}|${slotKey(
+        a.slotSnapshot,
+        pidFromAtt
+      )}`;
+      removedRegularKeys.add(k);
+    }
   }
 
   // ——— 3) ocurrencias base (sin reprogramaciones) ———
@@ -446,8 +463,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
   const baseFiltered = base.filter((ev) => {
     const dayISO = dateOnlyISO(new Date(ev.start));
     const key = `${ev.professorId || ""}|${dayISO}|${ev.slotKey}`;
-    return !outKeys.has(key);
-    // (label de asistencia ya está aplicado en title)
+    return !outKeys.has(key) && !removedRegularKeys.has(key); // 👈 agrega este chequeo
   });
 
   // ——— 7) combinar con prioridad y desduplicar por día+horario ———
