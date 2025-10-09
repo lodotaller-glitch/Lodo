@@ -335,7 +335,6 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
       removedRegularKeys.add(k);
     }
   }
-
   // ——— 3) ocurrencias base (sin reprogramaciones) ———
   const base = [];
   for (const s of enrollment.chosenSlots || []) {
@@ -433,6 +432,8 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
   const adhocIn = [];
   for (const a of attendanceDocs) {
     if (a.origin !== "adhoc" || !a.slotSnapshot) continue;
+    if (a.removed === true) continue; // <-- importante: no incluir adhoc removidos
+
     const td = new Date(a.date);
     if (td < monthStart || td > monthEnd) continue;
 
