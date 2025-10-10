@@ -82,7 +82,6 @@ export default function PiecesAdminPage() {
   const [savingId, setSavingId] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
 
-  // build query string
   function buildQuery() {
     const params = new URLSearchParams();
     if (qPiece.trim()) params.set("title", qPiece.trim());
@@ -95,6 +94,7 @@ export default function PiecesAdminPage() {
   }
 
   async function fetchPieces() {
+    if (!branchId) return;
     setLoading(true);
     setError("");
     try {
@@ -108,9 +108,10 @@ export default function PiecesAdminPage() {
     }
     setLoading(false);
   }
-  // debounce filters
+
   useEffect(() => {
-    fetchPieces(); // no creamos AbortController
+    fetchPieces();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId, page]);
 
   async function changeStatus(pieceId, newStatus) {
@@ -148,7 +149,7 @@ export default function PiecesAdminPage() {
 
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-4">
         <h1 className="text-lg font-semibold" style={{ color: BRAND.text }}>
           Todas las piezas
         </h1>
@@ -162,7 +163,7 @@ export default function PiecesAdminPage() {
         className="mb-6 rounded-2xl border p-4"
         style={{ borderColor: BRAND.soft }}
       >
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           <div>
             <label
               className="block text-xs font-medium"
@@ -194,7 +195,8 @@ export default function PiecesAdminPage() {
               style={{ borderColor: BRAND.soft, color: BRAND.text }}
             />
           </div>
-          <div className="sm:col-span-2">
+
+          <div>
             <label
               className="block text-xs font-medium"
               style={{ color: `${BRAND.text}CC` }}
@@ -209,10 +211,10 @@ export default function PiecesAdminPage() {
             >
               <option value="desc">Más recientes primero</option>
               <option value="asc">Más antiguas primero</option>
-            </select>{" "}
+            </select>
           </div>
 
-          <div className="sm:col-span-2">
+          <div>
             <label
               className="block text-xs font-medium"
               style={{ color: `${BRAND.text}CC` }}
@@ -234,11 +236,11 @@ export default function PiecesAdminPage() {
             </select>
           </div>
 
-          <div className="sm:col-span-2 flex items-end gap-2">
+          <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4 flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
             <button
               type="button"
               onClick={() => fetchPieces()}
-              className="rounded-xl px-3 py-2 text-sm"
+              className="rounded-xl px-3 py-2 text-sm w-full sm:w-auto"
               style={{ backgroundColor: BRAND.main, color: "#fff" }}
             >
               Aplicar
@@ -246,7 +248,7 @@ export default function PiecesAdminPage() {
             <button
               type="button"
               onClick={clearFilters}
-              className="rounded-xl px-3 py-2 text-sm border"
+              className="rounded-xl px-3 py-2 text-sm border w-full sm:w-auto"
               style={{
                 borderColor: BRAND.soft,
                 color: BRAND.text,
@@ -281,7 +283,7 @@ export default function PiecesAdminPage() {
         </div>
       ) : (
         <>
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((p) => {
               const images = Array.isArray(p.images) ? p.images : [];
               return (
@@ -302,24 +304,23 @@ export default function PiecesAdminPage() {
                         Sin imágenes
                       </div>
                     ) : (
-                      <div key={images[0]} className={`relative col-span-4`}>
-                        <div
-                          className="aspect-[4/3] w-full overflow-hidden rounded-xl border"
-                          style={{ borderColor: BRAND.soft }}
-                        >
-                          <Image
-                            src={images[0]}
-                            alt={`Imagen de ${p.title || "pieza"}`}
-                            className="h-full w-full object-cover transition group-hover:scale-[1.01]"
-                            width={300}
-                            height={300}
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        </div>
+                      <div
+                        className="relative col-span-4 h-0 pb-[75%] overflow-hidden rounded-xl border"
+                        style={{ borderColor: BRAND.soft }}
+                      >
+                        <Image
+                          src={images[0]}
+                          alt={`Imagen de ${p.title || "pieza"}`}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          style={{ objectFit: "cover" }}
+                          loading="lazy"
+                          decoding="async"
+                        />
                       </div>
                     )}
                   </div>
+
                   {loadingId === p._id ? (
                     <div className="flex justify-center py-10">
                       <ClipLoader color={BRAND.main} size={50} />
@@ -374,7 +375,7 @@ export default function PiecesAdminPage() {
                           href={`/professor/students/${
                             p.studentId || p.student?._id
                           }/pieces/${p._id}`}
-                          className="inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition"
+                          className="inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition w-full sm:w-auto"
                           style={{ backgroundColor: BRAND.main, color: "#fff" }}
                         >
                           Ver / Editar
@@ -386,12 +387,12 @@ export default function PiecesAdminPage() {
               );
             })}
           </ul>
-          {/* paginación */}
-          <div className="mt-6 flex justify-center gap-2">
+
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-3 py-1 rounded border"
+              className="px-3 py-1 rounded border w-full sm:w-auto"
               style={{ borderColor: BRAND.soft, color: BRAND.text }}
             >
               Anterior
@@ -402,7 +403,7 @@ export default function PiecesAdminPage() {
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="px-3 py-1 rounded border"
+              className="px-3 py-1 rounded border w-full sm:w-auto"
               style={{ borderColor: BRAND.soft, color: BRAND.text }}
             >
               Siguiente
