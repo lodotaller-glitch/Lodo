@@ -56,6 +56,7 @@ export default function PiecesOfStudent({ studentId, branchIdProp }) {
   const branchId = branchIdProp || params?.branchId;
 
   async function load() {
+    if (!branchId) return
     setLoading(true);
     setError("");
     try {
@@ -71,7 +72,7 @@ export default function PiecesOfStudent({ studentId, branchIdProp }) {
 
   useEffect(() => {
     load();
-  }, [studentId]);
+  }, [studentId, branchId]);
 
   if (loading) return <p>Cargando…</p>;
   if (error) return <p className="text-red-600">{error}</p>;

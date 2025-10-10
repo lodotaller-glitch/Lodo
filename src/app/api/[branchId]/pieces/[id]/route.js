@@ -6,6 +6,14 @@ import { Piece, User } from "@/models";
 import { getUserFromRequest } from "@/lib/authserver";
 import { sendPieceReadyEmail } from "@/lib/mailer";
 
+const STATUSES = [
+  "Lista",
+  "En preparacion",
+  "En el horno",
+  "Destruida",
+  "Sin terminar",
+];
+
 function canRead(me, piece) {
   if (!me) return false;
   if (me.role === "admin" || me.role === "professor") return true;
@@ -34,7 +42,7 @@ export async function PUT(req, { params }) {
   }
 
   const body = await req.json();
-  const patch = { status: body.status };
+  const patch = {};
   if (typeof body.title === "string") patch.title = body.title;
   if (Array.isArray(body.images)) {
     if (
@@ -50,6 +58,12 @@ export async function PUT(req, { params }) {
     )
       return _NR.json({ error: "Imágenes inválidas" }, { status: 400 });
     patch.images = body.images;
+  }
+
+  if (typeof body.status === "string") {
+    if (!STATUSES.includes(body.status)) {
+      return _NR.json({ error: "Estado inválido" }, { status: 400 });
+    }
   }
 
   // Estado se gestiona en /status (para disparar email)

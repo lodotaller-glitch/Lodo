@@ -58,6 +58,7 @@ export default function Header({ onNavigateStart }) {
           { href: `/${branchId}/students`, label: "Estudiantes" },
           { href: `/${branchId}/professors`, label: "Profesores" },
           { href: `/${branchId}/networks`, label: "Redes" },
+          { href: `/${branchId}/pieces`, label: "Piezas" },
           { href: `/${branchId}/payments`, label: "Pagos" },
           { href: `/branches`, label: "Sucursales" },
         ];
@@ -66,11 +67,13 @@ export default function Header({ onNavigateStart }) {
           ...common,
           { href: `/${user?.branch}`, label: "Inicio" },
           { href: `/${user?.branch}/students`, label: "Estudiantes" },
+          { href: `/branches`, label: "Sucursales" },
         ];
       case "professor":
         return [
           ...common,
           { href: `/professor`, label: "Inicio" },
+          { href: `/professor/pieces`, label: "Piezas" },
           { href: `/professor/students`, label: "Estudiantes" },
           { href: `/professor/profile`, label: "Perfil" },
         ];

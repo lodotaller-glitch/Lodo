@@ -32,6 +32,7 @@ export default function EditPiecePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
+  const [status, setStatus] = useState("");
 
   const [urls, setUrls] = useState([]); // links ya guardados
   const [files, setFiles] = useState([]); // nuevos archivos a subir
@@ -46,6 +47,7 @@ export default function EditPiecePage() {
         if (!alive) return;
         setTitle(json.piece.title || "");
         setUrls(Array.isArray(json.piece.images) ? json.piece.images : []);
+        setStatus(json.piece.status || "Sin terminar");
       } catch (e) {
         setError(e.message);
       }
@@ -155,16 +157,28 @@ export default function EditPiecePage() {
           >
             Editar pieza
           </h1>
-          <span
-            className="rounded-full px-3 py-1 text-xs"
-            style={{
-              backgroundColor: `${BRAND.soft}`,
-              color: BRAND.text,
-              border: `1px solid ${BRAND.main}55`,
-            }}
-          >
-            Máx. {MAX} imágenes
-          </span>
+          <div>
+            <span
+              className="rounded-full px-3 py-1 text-xs"
+              style={{
+                backgroundColor: `${BRAND.soft}`,
+                color: BRAND.text,
+                border: `1px solid ${BRAND.main}55`,
+              }}
+            >
+              {status}
+            </span>
+            <span
+              className="rounded-full px-3 py-1 text-xs"
+              style={{
+                backgroundColor: `${BRAND.soft}`,
+                color: BRAND.text,
+                border: `1px solid ${BRAND.main}55`,
+              }}
+            >
+              Máx. {MAX} imágenes
+            </span>
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { verifyAccessToken, verifyRefreshToken } from "@/lib/auth";
-import { User } from "@/models";
+import { Branch, User } from "@/models";
 import { Types } from "mongoose";
 
 export async function getUserFromRequest(req) {
@@ -7,17 +7,17 @@ export async function getUserFromRequest(req) {
   //   const auth =
   //     req.headers.cookie?.get?.("authorization") || req.headers?.get?.("refreshToken");
   //   const token = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : null;
-  
+
   // const cookieToken =
   //     req.cookies?.get?.("accessToken")?.value ||
   //     req.cookies?.get?.("refreshToken")?.value;
   const token = req.cookies?.get?.("refreshToken")?.value;
 
-    if (token) {
-      try {
-        // Tu verifyAccessToken viene de src/lib/auth.js (jsonwebtoken)
-        const payload = verifyRefreshToken(token);
-      
+  if (token) {
+    try {
+      // Tu verifyAccessToken viene de src/lib/auth.js (jsonwebtoken)
+      const payload = verifyRefreshToken(token);
+
       // En tu código firmás tokens a veces con { id } y otras con { sub, ...publicUser }
       const id = payload?.id || payload?.sub || payload?.userId || payload?._id;
 
@@ -34,6 +34,7 @@ export async function getUserFromRequest(req) {
           name: userDoc.name,
           state: userDoc.state,
           capacity: userDoc.capacity,
+          branch: userDoc.branch,
         };
       }
 
@@ -47,6 +48,7 @@ export async function getUserFromRequest(req) {
           name: payload?.name ?? payload?.user?.name ?? null,
           state: payload?.state ?? null,
           capacity: payload?.capacity ?? null,
+          branch: payload?.branch ?? null,
         };
       }
     } catch {
@@ -74,6 +76,7 @@ export async function getUserFromRequest(req) {
       name: userDoc?.name || null,
       state: userDoc?.state || null,
       capacity: userDoc?.capacity || null,
+      branch: userDoc?.branch || null,
     };
   }
 

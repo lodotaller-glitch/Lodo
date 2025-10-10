@@ -25,6 +25,12 @@ const PieceSchema = new Schema(
       required: true,
       index: true,
     },
+    branch: {
+      type: mongoose.Types.ObjectId,
+      ref: "Branch", // <-- nombre del modelo de tu colección Branch
+      required: true,
+      index: true,
+    },
   },
   { timestamps: true }
 );

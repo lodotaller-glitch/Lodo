@@ -106,7 +106,7 @@ export default function EnrollmentManagerById({
     if (!canLoad) return;
     setLoading(true);
     setError("");
-    
+
     try {
       const res = await fetch(
         `/api/${branchId}/enrollments/by-student/${studentId}`
@@ -329,25 +329,31 @@ export default function EnrollmentManagerById({
                   </button>
                   <PayPreview pay={e.pay} />
                   <StateBadge assigned={!!e.assigned} />
-                  <button
-                    onClick={() => toggleAssign(e._id, e.assigned)}
-                    className="rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition hover:shadow"
-                    style={{
-                      backgroundColor: e.assigned
-                        ? `${BRAND.soft}55`
-                        : BRAND.main,
-                      color: e.assigned ? BRAND.text : "#fff",
-                      border: `1px solid ${BRAND.main}`,
-                    }}
-                  >
-                    {e.assigned ? "Desasignar" : "Asignar"}
-                  </button>
+                  {user?.role === "admin" || user?.role === "networks" ? (
+                    <button
+                      onClick={() => toggleAssign(e._id, e.assigned)}
+                      className="rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition hover:shadow"
+                      style={{
+                        backgroundColor: e.assigned
+                          ? `${BRAND.soft}55`
+                          : BRAND.main,
+                        color: e.assigned ? BRAND.text : "#fff",
+                        border: `1px solid ${BRAND.main}`,
+                      }}
+                    >
+                      {e.assigned ? "Desasignar" : "Asignar"}
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
               {/* Actions (externas) */}
               <div className="mt-3">
-                <ManageEnrollmentActions enrollment={e} onChanged={load} branchId={branchId} />
+                <ManageEnrollmentActions
+                  enrollment={e}
+                  onChanged={load}
+                  branchId={branchId}
+                />
               </div>
 
               {/* Pago */}
