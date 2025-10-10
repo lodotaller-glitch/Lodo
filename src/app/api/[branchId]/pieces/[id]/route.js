@@ -64,6 +64,8 @@ export async function PUT(req, { params }) {
     if (!STATUSES.includes(body.status)) {
       return _NR.json({ error: "Estado inválido" }, { status: 400 });
     }
+
+    patch.status = body.status;
   }
 
   // Estado se gestiona en /status (para disparar email)
