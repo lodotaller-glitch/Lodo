@@ -113,7 +113,7 @@ export default function PiecesAdminPage() {
   }, [branchId, page]);
 
   async function changeStatus(pieceId, newStatus) {
-    setLoadingId(true);
+    setLoadingId(pieceId);
     setError("");
     const old = items;
     setSavingId(pieceId);
@@ -319,7 +319,7 @@ export default function PiecesAdminPage() {
                       </div>
                     )}
                   </div>
-                  {loadingId ? (
+                  {loadingId === p._id ? (
                     <div className="flex justify-center py-10">
                       <ClipLoader color={BRAND.main} size={50} />
                     </div>

@@ -1,5 +1,5 @@
 "use client";
-import React, { use, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ClipLoader } from "react-spinners";
 import api from "@/lib/axios";
@@ -62,6 +62,7 @@ function StatusBadge({ status }) {
 export default function PiecesAdminPage() {
   const { user } = useAuth();
   const branchId = user?.branch;
+
   // data
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -113,7 +114,7 @@ export default function PiecesAdminPage() {
   }, [branchId, page]);
 
   async function changeStatus(pieceId, newStatus) {
-    setLoadingId(true);
+    setLoadingId(pieceId);
     setError("");
     const old = items;
     setSavingId(pieceId);
@@ -319,7 +320,7 @@ export default function PiecesAdminPage() {
                       </div>
                     )}
                   </div>
-                  {loadingId ? (
+                  {loadingId === p._id ? (
                     <div className="flex justify-center py-10">
                       <ClipLoader color={BRAND.main} size={50} />
                     </div>
