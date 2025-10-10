@@ -54,7 +54,6 @@ export async function GET(req, { params }) {
     const dayStart = startOfDayUTC(date);
     const dayEnd = endOfDayUTC(date);
 
-
     const { professorId, dayOfWeek, startMin, endMin } = parseSlot(slot);
 
     // 1) Enrollments regulares que matchean la franja
@@ -143,12 +142,14 @@ export async function GET(req, { params }) {
     })
       .select("enrollment student")
       .populate("student", "name")
+      .populate("enrollment", "pay.state pay2.state")
       .lean();
 
     const rescheduleIn = resInDocs.map((r) => {
-      const enId = r.enrollment ? String(r.enrollment) : null;
-      const en = enId ? enById.get(enId) : null;
-      const payState =  en?.pay2?.state || en?.pay?.state || "pendiente";
+      const enId = r?.enrollment?._id ? String(r?.enrollment?._id) : null;
+      const en = enId ? enById.get(enId) || r?.enrollment : null;
+
+      const payState = en?.pay2?.state || en?.pay?.state || null;
       return {
         id: r.student ? String(r.student._id || r.student) : undefined,
         name: r.student?.name || "Alumno",
@@ -232,11 +233,13 @@ export async function GET(req, { params }) {
     const resultAdhoc = adhocAttendances.map((a) => ({
       _id: String(a.student?._id),
       name: a.student?.name,
-      enrollmentId: null,
+      enrollmentId: a?.enrollment?._id ? String(a.enrollment._id) : null,
       present: a.status === "presente",
       origin: "adhoc",
-      payState: null,
-      paid: null,
+      payState: a?.enrollment?.pay2?.state || a?.enrollment?.pay?.state || null,
+      paid:
+        a?.enrollment?.pay2?.state === "pagado" ||
+        a?.enrollment?.pay?.state === "pagado",
     }));
 
     // 9) Combinar

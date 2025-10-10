@@ -38,7 +38,7 @@ export async function GET(req) {
       );
     }
 
-    const matchBase = { year, month };
+    const matchBase = { year, month, assigned: true };
     if (branchId) {
       const bid = toObjId(branchId);
       if (bid) matchBase.branch = bid;

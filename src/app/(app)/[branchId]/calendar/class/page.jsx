@@ -111,7 +111,7 @@ export default function ProfessorClassPage({ searchParams }) {
     setStudents((arr) =>
       arr.filter((s) => !(s._id === id && s.origin === st.origin))
     );
-    
+
     fetch(`/api/${branchId}/classes`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -272,6 +272,7 @@ export default function ProfessorClassPage({ searchParams }) {
       a.remove();
     } catch {}
   }
+  
 
   if (loading) {
     return (
@@ -404,7 +405,7 @@ export default function ProfessorClassPage({ searchParams }) {
                 </label>
 
                 <div className="mt-2 sm:mt-0 ml-0 sm:ml-auto flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                  {s.enrollmentId ? (
+                  {s.enrollmentId && s.payState ? (
                     <span
                       className="rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0"
                       style={{

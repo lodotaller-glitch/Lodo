@@ -38,7 +38,7 @@ export async function GET(req) {
       );
     }
 
-    const q = { year, month, state };
+    const q = { year, month, state, assigned: true };
 
     if (branchId) {
       const bid = toObjId(branchId);
