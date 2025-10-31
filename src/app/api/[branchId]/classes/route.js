@@ -59,7 +59,7 @@ export async function GET(req, { params }) {
     const { professorId, dayOfWeek, startMin, endMin } = parseSlot(slot);
 
     let enrollments = [];
-    if (adhoc) {
+    if (adhoc === "true") {
       enrollments = await AdhocClass.find({
         branch: branchId,
         professor: professorId,
@@ -83,6 +83,7 @@ export async function GET(req, { params }) {
         .populate("student", "name")
         .lean();
     }
+
     const enById = new Map(enrollments.map((e) => [String(e._id), e]));
     // Base regulares asignados que tienen ese slot
     const regularBase = [];
@@ -558,7 +559,7 @@ export async function POST(req, { params }) {
       );
     }
     let enrollment = null;
-    if (!adhoc) {
+    if (adhoc === "false") {
       enrollment = await Enrollment.findOne({
         student: student._id,
         branch: branchId,
