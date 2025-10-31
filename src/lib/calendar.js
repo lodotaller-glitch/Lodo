@@ -401,28 +401,30 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
       });
     }
   }
-  for (const s of adhocClasses.chosenSlots || []) {
-    const days = datesForWeekdayInMonth(year, month, s.dayOfWeek); // respeta el límite 4/semana si lo definiste arriba
-    for (const day of days) {
-      const start = buildDateTimeUTC(day, s.startMin);
-      const dayISO = dateOnlyISO(day);
-      const att = attendanceByKey.get(`${dayISO}|${slotKey(s, pid)}`);
-      const status = statusAttendanse(att?.status, start);
+  if (adhocClasses) {
+    for (const s of adhocClasses.chosenSlots || []) {
+      const days = datesForWeekdayInMonth(year, month, s.dayOfWeek); // respeta el límite 4/semana si lo definiste arriba
+      for (const day of days) {
+        const start = buildDateTimeUTC(day, s.startMin);
+        const dayISO = dateOnlyISO(day);
+        const att = attendanceByKey.get(`${dayISO}|${slotKey(s, pid)}`);
+        const status = statusAttendanse(att?.status, start);
 
-      base.push({
-        title: `${DOW_SHORT[s.dayOfWeek]} ${strMin(s.startMin)}–${strMin(
-          s.endMin
-        )} (adhoc)`,
-        start,
-        end: buildDateTimeUTC(day, s.endMin),
-        professorId: pid || undefined,
-        slot: s,
-        slotKey: slotKey(s, pid),
-        origin: "adhoc",
-        payment: adhocClasses.pay, // campo del modelo
-        classState: status,
-        isAdhocClass: true,
-      });
+        base.push({
+          title: `${DOW_SHORT[s.dayOfWeek]} ${strMin(s.startMin)}–${strMin(
+            s.endMin
+          )} (adhoc)`,
+          start,
+          end: buildDateTimeUTC(day, s.endMin),
+          professorId: pid || undefined,
+          slot: s,
+          slotKey: slotKey(s, pid),
+          origin: "adhoc",
+          payment: adhocClasses.pay, // campo del modelo
+          classState: status,
+          isAdhocClass: true,
+        });
+      }
     }
   }
 
