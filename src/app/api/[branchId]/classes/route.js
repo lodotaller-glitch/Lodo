@@ -600,7 +600,7 @@ export async function POST(req, { params }) {
         slotSnapshot,
       };
 
-      if (adhoc) {
+      if (adhoc=== "true") {
         updateData.adhocClass = enrollment._id;
       } else {
         updateData.enrollment = enrollment._id;

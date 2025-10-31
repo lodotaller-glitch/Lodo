@@ -202,7 +202,7 @@ async function handleCheck({ req, payload, adhoc }) {
       slotSnapshot,
     };
 
-    if (adhoc) {
+    if (adhoc === "true") {
       updateData.adhocClass = enrollment._id;
     } else {
       updateData.enrollment = enrollment._id;
