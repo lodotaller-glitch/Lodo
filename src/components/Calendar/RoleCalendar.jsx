@@ -269,7 +269,6 @@ export default function RoleCalendar({
   const handleEventClick = useCallback(
     (ev) => {
       const r = ev.resource;
-      console.log(r);
 
       if (onEventClick) return onEventClick(ev);
       const startISO = new Date(r.start).toISOString();

@@ -289,19 +289,19 @@ export default function EditProfessorPage() {
       </section>
 
       {/* Footer */}
-      <footer className="flex justify-end gap-3">
+      <footer className="flex flex-wrap justify-end gap-3">
         <button
           onClick={() =>
             router.push(`/${branchId}/professors/${id}/adhoc-classes/${professor.name}`)
           }
-          className="rounded-xl px-4 py-2 font-semibold shadow-sm transition hover:brightness-95"
+          className="rounded-xl px-4 py-2 w-full sm:w-auto font-semibold shadow-sm transition hover:brightness-95"
           style={{ background: "#3B82F6", color: "#fff" }}
         >
           Cargar clases ad-hoc
         </button>
         <button
           onClick={handleDelete}
-          className="rounded-xl px-4 py-2 font-semibold shadow-sm transition hover:brightness-95"
+          className="rounded-xl px-4 py-2 w-full sm:w-auto font-semibold shadow-sm transition hover:brightness-95"
           style={{
             background: "#ef4444",
             color: "#fff",
@@ -312,7 +312,7 @@ export default function EditProfessorPage() {
         </button>
         <button
           onClick={() => router.push(`/${branchId}/professors`)}
-          className="rounded-xl border px-4 py-2 font-medium transition hover:shadow-sm"
+          className="rounded-xl border px-4 py-2 w-full sm:w-auto font-medium transition hover:shadow-sm"
           style={{
             borderColor: BRAND.soft,
             color: BRAND.text,
@@ -323,7 +323,7 @@ export default function EditProfessorPage() {
         </button>
         <button
           onClick={handleSave}
-          className="rounded-xl px-4 py-2 font-semibold shadow-sm transition hover:brightness-95"
+          className="rounded-xl px-4 py-2 w-full sm:w-auto font-semibold shadow-sm transition hover:brightness-95"
           style={{ background: BRAND.main, color: "#fff" }}
         >
           Guardar
