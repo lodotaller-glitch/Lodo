@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import { Enrollment, Attendance, User, StudentReschedule } from "@/models";
+import AdhocClass from "@/models/AdhocClass";
 
 function parseSlot(slot) {
   const [professorId, dayOfWeek, startMin, endMin] = slot
@@ -44,6 +45,7 @@ export async function GET(req, { params }) {
     const { searchParams } = new URL(req.url);
     const start = searchParams.get("start");
     const slot = searchParams.get("slot");
+    const adhoc = searchParams.get("adhoc");
     if (!start || !slot) {
       return NextResponse.json({ error: "Faltan parámetros" }, { status: 400 });
     }
@@ -56,17 +58,31 @@ export async function GET(req, { params }) {
 
     const { professorId, dayOfWeek, startMin, endMin } = parseSlot(slot);
 
-    // 1) Enrollments regulares que matchean la franja
-    const enrollments = await Enrollment.find({
-      branch: branchId,
-      professor: professorId,
-      year,
-      month,
-      state: "activa",
-    })
-      .select("student chosenSlots assigned pay.state pay2.state")
-      .populate("student", "name")
-      .lean();
+    let enrollments = [];
+    if (adhoc) {
+      enrollments = await AdhocClass.find({
+        branch: branchId,
+        professor: professorId,
+        year,
+        month,
+        state: "activa",
+      })
+        .select("student chosenSlots assigned pay.state pay2.state")
+        .populate("student", "name")
+        .lean();
+    } else {
+      // 1) Enrollments regulares que matchean la franja
+      enrollments = await Enrollment.find({
+        branch: branchId,
+        professor: professorId,
+        year,
+        month,
+        state: "activa",
+      })
+        .select("student chosenSlots assigned pay.state pay2.state")
+        .populate("student", "name")
+        .lean();
+    }
     const enById = new Map(enrollments.map((e) => [String(e._id), e]));
     // Base regulares asignados que tienen ese slot
     const regularBase = [];
@@ -523,7 +539,7 @@ export async function POST(req, { params }) {
   try {
     await dbConnect();
     const { branchId } = await params;
-    const { email, start, slot } = await req.json();
+    const { email, start, slot, adhoc } = await req.json();
     if (!email || !start || !slot) {
       return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
     }
@@ -541,36 +557,61 @@ export async function POST(req, { params }) {
         { status: 404 }
       );
     }
-
+    let enrollment = null;
+    if (!adhoc) {
+      enrollment = await Enrollment.findOne({
+        student: student._id,
+        branch: branchId,
+        professor: professorId,
+        year,
+        month,
+        $or: [{ state: "activa" }, { estado: "activa" }],
+        chosenSlots: { $elemMatch: { dayOfWeek, startMin, endMin } },
+      })
+        .select("_id student")
+        .populate("student", "name")
+        .lean();
+    } else {
+      enrollment = await AdhocClass.findOne({
+        student: student._id,
+        branch: branchId,
+        professor: professorId,
+        year,
+        month,
+        $or: [{ state: "activa" }, { estado: "activa" }],
+        chosenSlots: { $elemMatch: { dayOfWeek, startMin, endMin } },
+      })
+        .select("_id student")
+        .populate("student", "name")
+        .lean();
+    }
     // ¿tiene inscripción REGULAR ese mes y slot?
-    const enrollment = await Enrollment.findOne({
-      student: student._id,
-      branch: branchId,
-      professor: professorId,
-      year,
-      month,
-      $or: [{ state: "activa" }, { estado: "activa" }],
-      chosenSlots: { $elemMatch: { dayOfWeek, startMin, endMin } },
-    })
-      .select("_id student")
-      .populate("student", "name")
-      .lean();
 
     if (enrollment) {
+      const updateData = {
+        student: enrollment ? enrollment.student._id : student.id, // si es adhoc puede venir studentId directamente
+        professor: professorId,
+        branch: branchId,
+        date,
+        status: "ausente", // o "presente" según corresponda
+        removed: false,
+        origin: enrollment ? "regular" : "adhoc",
+        slotSnapshot,
+      };
+
+      if (adhoc) {
+        updateData.adhocClass = enrollment._id;
+      } else {
+        updateData.enrollment = enrollment._id;
+      }
       // Upsert asistencia REGULAR
       await Attendance.findOneAndUpdate(
-        { enrollment: enrollment._id, date },
         {
-          enrollment: enrollment._id,
-          student: enrollment.student._id,
-          professor: professorId,
-          branch: branchId,
+          ...(adhoc ? { enrollment: enrollment._id } : {}),
+          ...(!adhoc ? { adhocClass: enrollment._id } : {}),
           date,
-          status: "ausente",
-          removed: false,
-          origin: "regular",
-          slotSnapshot,
         },
+        updateData,
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
 

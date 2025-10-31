@@ -33,7 +33,7 @@ function buildClassKey({ branchId, startISO, slot, enrollmentId }) {
 }
 
 export default function ProfessorClassPage({ searchParams }) {
-  const { start, slot, enrollmentId } = use(searchParams); // ya viene por props
+  const { start, slot, enrollmentId, adhoc } = use(searchParams); // ya viene por props
   const { user } = useAuth();
   const { branchId } = useParams();
 
@@ -53,7 +53,9 @@ export default function ProfessorClassPage({ searchParams }) {
         const res = await fetch(
           `/api/${branchId}/classes?start=${encodeURIComponent(
             start
-          )}&slot=${encodeURIComponent(slot)}`,
+          )}&slot=${encodeURIComponent(slot)}&adhoc=${encodeURIComponent(
+            adhoc
+          )}`,
           { signal: controller.signal }
         );
         const data = await res.json();
@@ -94,7 +96,7 @@ export default function ProfessorClassPage({ searchParams }) {
     fetch(`/api/${branchId}/classes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, start, slot }),
+      body: JSON.stringify({ email, start, slot, adhoc }),
     })
       .then((r) => r.json())
       .then((data) => {
@@ -136,7 +138,7 @@ export default function ProfessorClassPage({ searchParams }) {
   const qrApiUrl = useMemo(() => {
     if (!classKey) return "";
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return `${origin}/api/class/check?k=${classKey}`;
+    return `${origin}/api/class/check?k=${classKey}&adhoc=${adhoc}`;
   }, [classKey]);
 
   const dtf = useMemo(
@@ -272,7 +274,6 @@ export default function ProfessorClassPage({ searchParams }) {
       a.remove();
     } catch {}
   }
-  
 
   if (loading) {
     return (

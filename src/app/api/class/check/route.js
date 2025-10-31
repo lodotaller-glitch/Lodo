@@ -8,6 +8,7 @@ import {
   ProfessorSchedule,
 } from "@/models";
 import { getUserFromRequest } from "@/lib/authserver";
+import AdhocClass from "@/models/AdhocClass";
 
 // "profId-dow-startMin-endMin"
 function parseSlot(slot) {
@@ -48,9 +49,8 @@ function buildSlotSnapshot(slot) {
   };
 }
 
-async function handleCheck({ req, payload }) {
+async function handleCheck({ req, payload, adhoc }) {
   await dbConnect();
-
   // Debe estar logueado como estudiante
   const actor = await getUserFromRequest(req);
   if (!actor?._id) {
@@ -149,39 +149,69 @@ async function handleCheck({ req, payload }) {
   // ------------------------------------------------------------------
   // B) ENROLLMENT REGULAR
   // ------------------------------------------------------------------
-  const enrollment = await Enrollment.findOne({
-    student: student._id,
-    branch: branchId,
-    professor: slot.professorId,
-    year: y,
-    month: m,
-    $or: [{ state: "activa" }, { estado: "activa" }],
-    $or: [{ assigned: true }, { asignado: true }],
-    chosenSlots: {
-      $elemMatch: {
-        dayOfWeek: slot.dayOfWeek,
-        startMin: slot.startMin,
-        endMin: slot.endMin,
+  let enrollment = null;
+  if (!adhoc) {
+    enrollment = await Enrollment.findOne({
+      student: student._id,
+      branch: branchId,
+      professor: slot.professorId,
+      year: y,
+      month: m,
+      $or: [{ state: "activa" }, { estado: "activa" }],
+      $or: [{ assigned: true }, { asignado: true }],
+      chosenSlots: {
+        $elemMatch: {
+          dayOfWeek: slot.dayOfWeek,
+          startMin: slot.startMin,
+          endMin: slot.endMin,
+        },
       },
-    },
-  })
-    .select("_id student")
-    .lean();
+    })
+      .select("_id student")
+      .lean();
+  } else {
+    enrollment = await AdhocClass.findOne({
+      student: student._id,
+      branch: branchId,
+      professor: slot.professorId,
+      year: y,
+      month: m,
+      $or: [{ state: "activa" }, { estado: "activa" }],
+      $or: [{ assigned: true }, { asignado: true }],
+      chosenSlots: {
+        $elemMatch: {
+          dayOfWeek: slot.dayOfWeek,
+          startMin: slot.startMin,
+          endMin: slot.endMin,
+        },
+      },
+    })
+      .select("_id student")
+      .lean();
+  }
 
   if (enrollment) {
+    const updateData = {
+      student: enrollment.student,
+      professor: slot.professorId,
+      branch: branchId,
+      date: startDate,
+      status: "presente",
+      origin: "regular",
+      removed: false,
+      slotSnapshot,
+    };
+
+    if (adhoc) {
+      updateData.adhocClass = enrollment._id;
+    } else {
+      updateData.enrollment = enrollment._id;
+    }
+
     await Attendance.findOneAndUpdate(
-      { enrollment: enrollment._id, date: startDate },
-      {
-        enrollment: enrollment._id,
-        student: enrollment.student,
-        professor: slot.professorId,
-        branch: branchId,
-        date: startDate,
-        status: "presente",
-        origin: "regular",
-        removed: false,
-        slotSnapshot,
-      },
+      ...(adhoc ? { enrollment: enrollment._id } : {}),
+      ...(!adhoc ? { adhocClass: enrollment._id } : {}),
+      updateData,
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     return new NextResponse("OK (regular)", {
@@ -250,7 +280,8 @@ export async function GET(req) {
         headers: { "content-type": "text/plain" },
       });
     const payload = decodeKey(k);
-    return await handleCheck({ req, payload });
+    const adhoc = searchParams.get("adhoc");
+    return await handleCheck({ req, payload, adhoc });
   } catch (err) {
     console.error("GET /api/class/check", err);
     return new NextResponse("Error del servidor", {

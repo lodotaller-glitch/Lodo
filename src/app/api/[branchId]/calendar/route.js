@@ -8,6 +8,7 @@ import {
 } from "@/models";
 import dbConnect from "@/lib/dbConnect";
 import { slotKey } from "@/functions/slotKey";
+import AdhocClass from "@/models/AdhocClass";
 
 // --- utils locales ---
 function startOfMonthUTC(year, month) {
@@ -210,7 +211,14 @@ export async function GET(req, { params }) {
       const k = slotKey(a.slotSnapshot, pid);
       inc(regularRemovedMap, `${pid}|${iso}|${k}`);
     }
-
+    const adhocClasses = await AdhocClass.find({
+      professor: { $in: professorIds },
+      branch: branchId,
+      date: { $gte: monthStart, $lte: monthEnd },
+      removed: { $ne: true },
+    })
+      .select("professor date slotSnapshot students capacity")
+      .lean();
     // 5) Expandir a eventos por día del mes
     const events = [];
     for (const sc of schedules) {
@@ -254,6 +262,40 @@ export async function GET(req, { params }) {
           });
         }
       }
+    }
+
+    for (const ac of adhocClasses) {
+      const pid = String(ac.professor);
+      const iso = dateOnlyISO(new Date(ac.date));
+      const k = slotKey(ac.slotSnapshot, pid);
+      const takenFromEnrolls = (ac.students || []).length; // inscritos manuales
+      // Además contamos attendances ad-hoc para esa fecha/slot (ya lo hiciste en adhocIn)
+      const adhocAttendances = adhocIn.get(`${pid}|${iso}|${k}`) || 0;
+      // decide takenDay: prefer inscritos + any extra attendances not in students arr
+      // avoid double count: if a student both enrolled and created attendance we still want unique count.
+      // Simplest: taken = max(enrolled, adhocAttendances) OR combine unique — for robust solve, query distinct attendance students.
+      // Aquí combinamos conservadoramente:
+      const takenDay = Math.max(takenFromEnrolls, adhocAttendances);
+      const capacity =
+        ac.capacity || Math.max(1, Number(userById.get(pid)?.capacity ?? 10));
+      const leftDay = Math.max(0, capacity - takenDay);
+      const status = leftDay > 0 ? "available" : "full";
+
+      // start/end times
+      events.push({
+        title: `${
+          userById.get(pid)?.name || "Profesor"
+        } (${takenDay}/${capacity}) Clase ad-hoc`,
+        start: buildDateTimeUTC(new Date(ac.date), ac.slotSnapshot.startMin),
+        end: buildDateTimeUTC(new Date(ac.date), ac.slotSnapshot.endMin),
+        professorId: pid,
+        professorName: userById.get(pid)?.name || "Profesor",
+        slotKey: k,
+        capacityLeft: leftDay,
+        status,
+        _id: ac._id,
+        isAdhocClass: true,
+      });
     }
 
     events.sort((a, b) => a.start - b.start);

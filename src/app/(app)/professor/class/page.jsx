@@ -31,7 +31,7 @@ function buildClassKey({ branchId, startISO, slot, enrollmentId }) {
 }
 
 export default function ProfessorClassPage({ searchParams }) {
-  const { start, slot, enrollmentId } = use(searchParams); // ya viene por props
+  const { start, slot, enrollmentId, adhoc } = use(searchParams); // ya viene por props
   const { user } = useAuth();
   const branchId = user?.branch;
 
@@ -52,7 +52,9 @@ export default function ProfessorClassPage({ searchParams }) {
         const res = await fetch(
           `/api/${user.branch}/classes?start=${encodeURIComponent(
             start
-          )}&slot=${encodeURIComponent(slot)}`,
+          )}&slot=${encodeURIComponent(slot)}&adhoc=${encodeURIComponent(
+            adhoc
+          )}`,
           { signal: controller.signal }
         );
         const data = await res.json();
@@ -93,7 +95,7 @@ export default function ProfessorClassPage({ searchParams }) {
     fetch(`/api/${user.branch}/classes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, start, slot }),
+      body: JSON.stringify({ email, start, slot, adhoc }),
     })
       .then((r) => r.json())
       .then((data) => {
@@ -106,7 +108,7 @@ export default function ProfessorClassPage({ searchParams }) {
   function removeStudent(id) {
     if (!user) return;
     const st = students.find((s) => s._id === id);
-    
+
     if (!st) return;
     setStudents((arr) =>
       arr.filter((s) => !(s._id === id && s.origin === st.origin))
@@ -125,7 +127,6 @@ export default function ProfessorClassPage({ searchParams }) {
     }).catch(() => {});
   }
 
-
   // ----- QR directo al API -----
   const classKey = useMemo(() => {
     if (!start || !slot) return "";
@@ -136,7 +137,7 @@ export default function ProfessorClassPage({ searchParams }) {
   const qrApiUrl = useMemo(() => {
     if (!classKey) return "";
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return `${origin}/api/class/check?k=${classKey}`;
+    return `${origin}/api/class/check?k=${classKey}&adhoc=${adhoc}`;
   }, [classKey]);
 
   async function copyUrl() {

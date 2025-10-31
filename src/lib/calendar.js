@@ -8,6 +8,7 @@ import {
 } from "@/models"; // 👈 +StudentReschedule
 import dbConnect from "./dbConnect";
 import { slotKey } from "@/functions/slotKey";
+import AdhocClass from "@/models/AdhocClass";
 
 /** Util: fechas útiles */
 function startOfMonthUTC(year, month) {
@@ -190,6 +191,13 @@ export async function getProfessorMonthCalendar({ professorId, year, month }) {
     const k = slotKey(a.slotSnapshot, String(professorId));
     inc(adhocIn, `${professorId}|${dayISO}|${k}`);
   }
+  const adhocClasses = await AdhocClass.find({
+    professor: professorId,
+    date: { $gte: monthStart, $lte: monthEnd },
+    removed: { $ne: true },
+  })
+    .select("professor date slotSnapshot students capacity")
+    .lean();
 
   // 5) expandir a fechas del mes (takenDay = base - OUT + IN + ADHOC)
   const events = [];
@@ -223,6 +231,29 @@ export async function getProfessorMonthCalendar({ professorId, year, month }) {
         capacity,
       });
     }
+  }
+  for (const ac of adhocClasses) {
+    const iso = dateOnlyISO(new Date(ac.date));
+    const k = slotKey(ac.slotSnapshot, String(ac.professor));
+    const takenFromEnrolls = (ac.students || []).length;
+    const adhocAttendanceCount =
+      adhocIn.get(`${ac.professor}|${iso}|${k}`) || 0;
+
+    const takenDay = Math.max(takenFromEnrolls, adhocAttendanceCount);
+    const capacity = ac.capacity || schedule.capacity || 10;
+    const leftDay = Math.max(0, capacity - takenDay);
+
+    events.push({
+      title: `Clase ad-hoc (${takenDay}/${capacity})`,
+      start: buildDateTimeUTC(new Date(ac.date), ac.slotSnapshot.startMin),
+      end: buildDateTimeUTC(new Date(ac.date), ac.slotSnapshot.endMin),
+      professorId: String(ac.professor),
+      slotKey: k,
+      capacityLeft: leftDay,
+      status: leftDay > 0 ? "available" : "full",
+      isAdhocClass: true,
+      _id: ac._id,
+    });
   }
 
   return events.sort((a, b) => a.start - b.start);
@@ -335,6 +366,16 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
       removedRegularKeys.add(k);
     }
   }
+
+  const adhocClasses = await AdhocClass.findOne({
+    student: studentId, // compat
+    year,
+    month,
+    state: "activa",
+  })
+    .populate("professor", "name nombre")
+    .lean();
+
   // ——— 3) ocurrencias base (sin reprogramaciones) ———
   const base = [];
   for (const s of enrollment.chosenSlots || []) {
@@ -357,6 +398,30 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
         origin: "base",
         payment: enrollment.pay, // campo del modelo
         classState: status,
+      });
+    }
+  }
+  for (const s of adhocClasses.chosenSlots || []) {
+    const days = datesForWeekdayInMonth(year, month, s.dayOfWeek); // respeta el límite 4/semana si lo definiste arriba
+    for (const day of days) {
+      const start = buildDateTimeUTC(day, s.startMin);
+      const dayISO = dateOnlyISO(day);
+      const att = attendanceByKey.get(`${dayISO}|${slotKey(s, pid)}`);
+      const status = statusAttendanse(att?.status, start);
+
+      base.push({
+        title: `${DOW_SHORT[s.dayOfWeek]} ${strMin(s.startMin)}–${strMin(
+          s.endMin
+        )} (adhoc)`,
+        start,
+        end: buildDateTimeUTC(day, s.endMin),
+        professorId: pid || undefined,
+        slot: s,
+        slotKey: slotKey(s, pid),
+        origin: "adhoc",
+        payment: adhocClasses.pay, // campo del modelo
+        classState: status,
+        isAdhocClass: true,
       });
     }
   }

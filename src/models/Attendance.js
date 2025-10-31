@@ -18,6 +18,12 @@ const AttendanceSchema = new Schema(
       required: false,
       index: true,
     },
+    adhocClass: {
+      type: mongoose.Types.ObjectId,
+      ref: "AdhocClass",
+      required: false,
+      index: true,
+    },
     student: {
       type: mongoose.Types.ObjectId,
       ref: "User",

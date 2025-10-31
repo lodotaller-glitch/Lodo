@@ -269,6 +269,8 @@ export default function RoleCalendar({
   const handleEventClick = useCallback(
     (ev) => {
       const r = ev.resource;
+      console.log(r);
+
       if (onEventClick) return onEventClick(ev);
       const startISO = new Date(r.start).toISOString();
       if (role === "admin" || role === "networks") {
@@ -277,20 +279,24 @@ export default function RoleCalendar({
             r._id
           }&start=${encodeURIComponent(startISO)}&slot=${encodeURIComponent(
             r.slotKey || ""
-          )}`
+          )}&adhoc=${r.isAdhocClass ? true : false}`
         );
       } else if (role === "professor") {
         router.push(
           `/professor/class?start=${encodeURIComponent(
             startISO
-          )}&slot=${encodeURIComponent(r.slotKey || "")}`
+          )}&slot=${encodeURIComponent(r.slotKey || "")}&adhoc=${
+            r.isAdhocClass ? true : false
+          }`
         );
       } else {
         // student
         router.push(
           `/student/my-class?start=${encodeURIComponent(
             startISO
-          )}&professorId=${r.professorId}`
+          )}&professorId=${r.professorId}&adhoc=${
+            r.isAdhocClass ? true : false
+          }`
         );
       }
     },
