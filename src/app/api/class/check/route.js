@@ -298,6 +298,7 @@ export async function GET(req) {
 // POST: body { classKey }
 export async function POST(req) {
   try {
+    const { searchParams } = new URL(req.url);
     const { classKey } = await req.json();
     if (!classKey)
       return NextResponse.json({ error: "Falta classKey" }, { status: 400 });
