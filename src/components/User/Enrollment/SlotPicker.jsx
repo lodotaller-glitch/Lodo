@@ -5,6 +5,7 @@ import {
   getProfessorSlotsForMonth,
 } from "@/functions/request/enrollments";
 import { useParams } from "next/navigation";
+import { ClipLoader } from "react-spinners";
 
 const DOW = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const BRAND = { main: "#A08775", soft: "#DDD7C9" };
@@ -91,15 +92,12 @@ return (
         {error}
       </p>
     )}
-
-    {loading && (
-      <p
-        className="text-sm rounded-xl border px-3 py-2"
-        style={{ color: "#1F1C19", backgroundColor: "#DDD7C966", borderColor: "#DDD7C9" }}
-      >
-        Cargando horarios…
-      </p>
-    )}
+     {/* Loading spinner when fetching or saving */}
+      {loading && (
+        <div className="flex justify-center py-3">
+          <ClipLoader color={BRAND.main} size={35} speedMultiplier={0.9} />
+        </div>
+      )}
 
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {slots.map((s, i) => {

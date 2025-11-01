@@ -7,19 +7,27 @@ import {
   upsertNextMonthEnrollment,
 } from "@/functions/request/enrollments";
 import { useParams } from "next/navigation";
+import ClipLoader from "react-spinners/ClipLoader";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
-function TabButton({ active, children, onClick }) {
+function TabButton({ active, children, onClick, disabled }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-xl px-3 py-1.5 text-sm font-medium transition"
+      disabled={disabled}
+      className={`flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 ${
+        active
+          ? "bg-white shadow-sm border"
+          : "bg-[rgba(221,215,201,0.3)] hover:bg-[rgba(221,215,201,0.6)] border"
+      } ${
+        disabled
+          ? "cursor-not-allowed opacity-60"
+          : "hover:scale-[1.03] active:scale-[0.98]"
+      }`}
       style={{
-        backgroundColor: active ? "#fff" : `${BRAND.soft}55`,
         color: BRAND.text,
-        border: `1px solid ${active ? BRAND.main : BRAND.soft}`,
-        boxShadow: active ? "0 1px 2px rgba(0,0,0,.06)" : undefined,
+        borderColor: active ? BRAND.main : BRAND.soft,
       }}
     >
       {children}
@@ -53,7 +61,7 @@ export default function ManageEnrollmentActions({
   onChanged,
   branchId: branchIdProp,
 }) {
-  const [tab, setTab] = useState("mes"); // mes | siguiente | unica
+  const [tab, setTab] = useState(""); // mes | siguiente | unica
   const [slotsMes, setSlotsMes] = useState(enrollment.chosenSlots || []);
   const [slotsNext, setSlotsNext] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -69,7 +77,6 @@ export default function ManageEnrollmentActions({
   );
 
   const params = useParams();
-
   const branchId = branchIdProp || params?.branchId;
 
   async function saveMes() {
@@ -118,32 +125,38 @@ export default function ManageEnrollmentActions({
     >
       {/* Tabs */}
       <div
-        className="flex flex-wrap items-center gap-2 rounded-xl border p-1.5"
+        className="flex flex-wrap justify-center items-center gap-3 rounded-xl border p-2"
         style={{
           borderColor: BRAND.soft,
-          background: `linear-gradient(180deg, ${BRAND.soft}55, transparent)`,
+          background: `linear-gradient(180deg, ${BRAND.soft}33, transparent)`,
         }}
       >
         <TabButton active={tab === "mes"} onClick={() => setTab("mes")}>
           Cambiar horario (este mes)
         </TabButton>
-        <TabButton
-          active={tab === "siguiente"}
-          onClick={() => setTab("siguiente")}
-        >
-          Cambiar horario (mes siguiente)
-        </TabButton>
         <TabButton active={tab === "unica"} onClick={() => setTab("unica")}>
-          Reprogramar 1 clase
+          Reprogramar clase
         </TabButton>
+        {tab !== "" && (
+          <TabButton active={tab === ""} onClick={() => setTab("")}>
+            Cerrar
+          </TabButton>
+        )}
       </div>
 
       {/* Error */}
       {!!error && <Notice kind="error">{error}</Notice>}
 
+      {/* Loading spinner when fetching or saving */}
+      {saving && (
+        <div className="flex justify-center py-3">
+          <ClipLoader color={BRAND.main} size={35} speedMultiplier={0.9} />
+        </div>
+      )}
+
       {/* Mes actual */}
-      {tab === "mes" && (
-        <div className="space-y-3">
+      {!saving && tab === "mes" && (
+        <div className="space-y-3 animate-fadeIn">
           <SlotPicker
             professorId={enrollment.professor?._id || enrollment.professor}
             year={enrollment.year}
@@ -160,50 +173,22 @@ export default function ManageEnrollmentActions({
             <button
               onClick={saveMes}
               disabled={saving}
-              className="rounded-xl px-4 py-2 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
-              style={{ backgroundColor: BRAND.main, color: "#fff" }}
+              className="rounded-xl px-5 py-2 text-sm font-semibold shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                backgroundColor: BRAND.main,
+                color: "#fff",
+              }}
             >
-              {saving ? "Guardando…" : "Guardar horario de este mes"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Mes siguiente */}
-      {tab === "siguiente" && (
-        <div className="space-y-3">
-          <SlotPicker
-            professorId={enrollment.professor?._id || enrollment.professor}
-            year={yearNext}
-            month={monthNext}
-            value={slotsNext}
-            onChange={setSlotsNext}
-            branchId={branchId}
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-xs" style={{ color: `${BRAND.text}99` }}>
-              Seleccionados:{" "}
-              <b style={{ color: BRAND.text }}>{slotsNext.length}</b>
-            </span>
-            <button
-              onClick={saveNext}
-              disabled={saving}
-              className="rounded-xl px-4 py-2 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
-              style={{ backgroundColor: BRAND.main, color: "#fff" }}
-            >
-              {saving ? "Guardando…" : "Guardar horario del mes siguiente"}
+              Guardar horario de este mes
             </button>
           </div>
         </div>
       )}
 
       {/* Reprogramación única */}
-      {tab === "unica" && (
-        <div className="space-y-3">
-          <RescheduleSingleClass
-            enrollment={enrollment}
-            onDone={onChanged}
-          />
+      {!saving && tab === "unica" && (
+        <div className="space-y-3 animate-fadeIn">
+          <RescheduleSingleClass enrollment={enrollment} onDone={onChanged} />
           <p className="text-xs" style={{ color: `${BRAND.text}99` }}>
             Recordá: la reprogramación individual suele estar limitada a 1 por
             mes.

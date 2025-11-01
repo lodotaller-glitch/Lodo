@@ -11,6 +11,8 @@ import { useAuth } from "@/context/AuthContext";
 import { addHours, format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import Swal from "sweetalert2";
+import { ClipLoader } from "react-spinners";
+const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
 export default function RescheduleSingleClass({ enrollment, onDone }) {
   const [occurrences, setOccurrences] = useState([]);
@@ -165,17 +167,11 @@ export default function RescheduleSingleClass({ enrollment, onDone }) {
         Reprogramar una clase
       </h4>
 
+      {/* Loading spinner when fetching or saving */}
       {loading && (
-        <p
-          className="text-sm rounded-xl border px-3 py-2"
-          style={{
-            color: "#1F1C19",
-            backgroundColor: "#DDD7C966",
-            borderColor: "#DDD7C9",
-          }}
-        >
-          Cargando…
-        </p>
+        <div className="flex justify-center py-3">
+          <ClipLoader color={BRAND.main} size={35} speedMultiplier={0.9} />
+        </div>
       )}
       {error && (
         <p
