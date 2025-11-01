@@ -77,6 +77,8 @@ async function handleCheck({ req, payload, adhoc }) {
   const OPEN_OFFSET_MS = (2 * 60 + 45) * 60 * 1000;
 
   if (now < startsAt + OPEN_OFFSET_MS || now > startsAt + 6 * 60 * 60 * 1000) {
+    console.log("Fuera de ventana de check-in");
+
     return new NextResponse("Fuera de ventana de check-in", {
       status: 403,
       headers: { "content-type": "text/plain" },
@@ -150,7 +152,7 @@ async function handleCheck({ req, payload, adhoc }) {
   // B) ENROLLMENT REGULAR
   // ------------------------------------------------------------------
   let enrollment = null;
-  if (adhoc === "false") {
+  if (adhoc === "false" || !adhoc) {
     enrollment = await Enrollment.findOne({
       student: student._id,
       branch: branchId,
@@ -263,6 +265,8 @@ async function handleCheck({ req, payload, adhoc }) {
   // ------------------------------------------------------------------
   // D) No habilitado
   // ------------------------------------------------------------------
+  console.log("No estás inscripto en esta clase");
+
   return new NextResponse("No estás inscripto en esta clase", {
     status: 403,
     headers: { "content-type": "text/plain" },
