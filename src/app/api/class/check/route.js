@@ -298,7 +298,8 @@ export async function POST(req) {
     if (!classKey)
       return NextResponse.json({ error: "Falta classKey" }, { status: 400 });
     const payload = decodeKey(classKey);
-    const res = await handleCheck({ req, payload });
+    const adhoc = searchParams.get("adhoc");
+    const res = await handleCheck({ req, payload, adhoc });
     return NextResponse.json(
       { ok: res.status === 200, message: await res.text() },
       { status: res.status }

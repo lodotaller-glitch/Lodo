@@ -232,8 +232,12 @@ export function NewEnrollmentInline({ branchId, studentId, onCreated }) {
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {slots.map((s) => {
                 const active = slotKey === s.slotKey;
-                const start = new Date(s.startISO);
-                const end = new Date(s.endISO);
+                const start = new Date(
+                  new Date(s.startISO).getTime() + 3 * 60 * 60 * 1000
+                );
+                const end = new Date(
+                  new Date(s.endISO).getTime() + 3 * 60 * 60 * 1000
+                );
                 const timeFmt = (d) =>
                   d.toLocaleTimeString([], {
                     hour: "2-digit",
