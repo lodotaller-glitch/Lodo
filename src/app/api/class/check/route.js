@@ -210,12 +210,17 @@ async function handleCheck({ req, payload, adhoc }) {
       updateData.enrollment = enrollment._id;
     }
 
-    await Attendance.findOneAndUpdate(
-      ...(adhoc ? { enrollment: enrollment._id } : {}),
-      ...(!adhoc ? { adhocClass: enrollment._id } : {}),
-      updateData,
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    const filter =
+      adhoc === "true"
+        ? { adhocClass: enrollment._id }
+        : { enrollment: enrollment._id };
+
+    await Attendance.findOneAndUpdate(filter, updateData, {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+    });
+
     return new NextResponse("OK (regular)", {
       status: 200,
       headers: { "content-type": "text/plain" },

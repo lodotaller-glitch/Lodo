@@ -600,21 +600,22 @@ export async function POST(req, { params }) {
         slotSnapshot,
       };
 
-      if (adhoc=== "true") {
+      if (adhoc === "true") {
         updateData.adhocClass = enrollment._id;
       } else {
         updateData.enrollment = enrollment._id;
       }
-      // Upsert asistencia REGULAR
-      await Attendance.findOneAndUpdate(
-        {
-          ...(adhoc ? { enrollment: enrollment._id } : {}),
-          ...(!adhoc ? { adhocClass: enrollment._id } : {}),
-          date,
-        },
-        updateData,
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
+
+      const filter =
+        adhoc === "true"
+          ? { adhocClass: enrollment._id }
+          : { enrollment: enrollment._id };
+
+      await Attendance.findOneAndUpdate(filter, updateData, {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      });
 
       return NextResponse.json({
         student: {
