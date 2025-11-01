@@ -150,7 +150,7 @@ async function handleCheck({ req, payload, adhoc }) {
   // B) ENROLLMENT REGULAR
   // ------------------------------------------------------------------
   let enrollment = null;
-  if (!adhoc) {
+  if (adhoc === "false") {
     enrollment = await Enrollment.findOne({
       student: student._id,
       branch: branchId,
