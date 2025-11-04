@@ -64,6 +64,9 @@ export default function NewStudentAndReschedulePage({ params }) {
       const map = new Map();
       for (const ev of data.events || []) {
         if (!map.has(ev.slotKey)) {
+          if (ev.isAdhocClass === true) {
+            continue;
+          }
           map.set(ev.slotKey, {
             slotKey: ev.slotKey,
             weekday: ev.weekday,
@@ -136,7 +139,6 @@ export default function NewStudentAndReschedulePage({ params }) {
       })),
     [slots]
   );
-
 
   return (
     <main className="max-w-5xl mx-auto p-6 space-y-10">

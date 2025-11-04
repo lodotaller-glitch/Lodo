@@ -60,6 +60,11 @@ export function NewEnrollmentInline({ branchId, studentId, onCreated }) {
       const map = new Map();
       for (const ev of data.events || []) {
         if (!map.has(ev.slotKey)) {
+          if (
+            ev.isAdhocClass === true
+          ) {
+            continue;
+          }
           map.set(ev.slotKey, {
             slotKey: ev.slotKey,
             weekday: ev.weekday,
