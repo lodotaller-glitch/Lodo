@@ -315,7 +315,8 @@ export default function EnrollmentManagerById({
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
-                  {user?.role !== "admin" ? null : (
+                  {user?.role !== "admin" &&
+                  user?.role !== "networks" ? null : (
                     <button
                       onClick={() => deleteEnrollment(e._id)}
                       className="rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition hover:shadow"
