@@ -46,7 +46,7 @@ export async function POST(req) {
       password,
       professorId,
       branch,
-      assignedNow = false,
+      assignedNow = true,
       year,
       month,
       createBy,

@@ -11,7 +11,7 @@ export async function POST(req, { params }) {
       year,
       month,
       chosenSlots = [],
-      assignNow = false,
+      assignNow = true,
       asStudent = false,
     } = await req.json();
 

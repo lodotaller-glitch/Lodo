@@ -25,7 +25,7 @@ export async function POST(req, { params }) {
   const professorId = toObjId(body.professorId);
   const year = Number(body.year);
   const month = Number(body.month);
-  const assignNow = body.assignNow === true;
+  const assignNow = true;
   let chosenSlots = Array.isArray(body.chosenSlots) ? body.chosenSlots : [];
 
   if (!studentId || !professorId || !year || !month) {
