@@ -62,7 +62,9 @@ export default function StudentsList({ professor = false }) {
   }, [params, branchId]);
 
   function handleCreate() {
-    router.push(`/${branchId}/students/new`);
+    !professor
+      ? router.push(`/${branchId}/students/new`)
+      : router.push(`/professor/students/new`);
   }
   function handleCreateplus() {
     router.push(`/${branchId}/students/bulk`);
@@ -90,13 +92,15 @@ export default function StudentsList({ professor = false }) {
           >
             + Crear estudiante
           </button>
-          <button
-            onClick={handleCreateplus}
-            className="px-4 py-2 rounded-xl text-white"
-            style={{ background: BRAND.main }}
-          >
-            + Crear muchos estudiantes
-          </button>
+          {!professor ? (
+            <button
+              onClick={handleCreateplus}
+              className="px-4 py-2 rounded-xl text-white"
+              style={{ background: BRAND.main }}
+            >
+              + Crear muchos estudiantes
+            </button>
+          ) : null}
         </div>
       </header>
 

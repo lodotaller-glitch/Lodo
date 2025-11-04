@@ -315,21 +315,23 @@ export default function EnrollmentManagerById({
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
-                  <button
-                    onClick={() => deleteEnrollment(e._id)}
-                    className="rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition hover:shadow"
-                    style={{
-                      backgroundColor: "#ef4444",
-                      color: "#fff",
-                      border: `1px solid #ef4444`,
-                    }}
-                    title="Eliminar inscripción"
-                  >
-                    Eliminar
-                  </button>
+                  {user?.role !== "admin" ? null : (
+                    <button
+                      onClick={() => deleteEnrollment(e._id)}
+                      className="rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition hover:shadow"
+                      style={{
+                        backgroundColor: "#ef4444",
+                        color: "#fff",
+                        border: `1px solid #ef4444`,
+                      }}
+                      title="Eliminar inscripción"
+                    >
+                      Eliminar
+                    </button>
+                  )}
                   <PayPreview pay={!e?.pay2 ? e.pay : e.pay2} />
                   <StateBadge assigned={!!e.assigned} />
-                  {user?.role === "admin" || user?.role === "networks" ? (
+                  {user?.role !== "admin" ? null : (
                     <button
                       onClick={() => toggleAssign(e._id, e.assigned)}
                       className="rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition hover:shadow"
@@ -343,7 +345,7 @@ export default function EnrollmentManagerById({
                     >
                       {e.assigned ? "Desasignar" : "Asignar"}
                     </button>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
