@@ -25,6 +25,11 @@ export async function GET(req) {
     const stateParam = searchParams.get("state"); // opcional: activa/cancelada
     const methodParam = searchParams.get("method"); // opcional
     const onlyPaid = searchParams.get("onlyPaid") === "true"; // default false
+    const assignedParam = searchParams.get("assigned") || true; // estado de inscripción
+
+    let assigned;
+    if (assignedParam === "true") assigned = true;
+    else if (assignedParam === "false") assigned = false;
 
     if (
       !Number.isInteger(year) ||
@@ -38,7 +43,11 @@ export async function GET(req) {
       );
     }
 
-    const matchBase = { year, month, assigned: true };
+    const matchBase = { year, month };
+
+    if (assigned !== undefined) {
+      matchBase.assigned = assigned;
+    }
     if (branchId) {
       const bid = toObjId(branchId);
       if (bid) matchBase.branch = bid;

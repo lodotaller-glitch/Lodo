@@ -20,6 +20,7 @@ export default function PaymentsDashboardPage() {
   const { year: y0, month: m0 } = ymNow();
   const [year, setYear] = useState(y0);
   const [month, setMonth] = useState(m0);
+  const [assigned, setAssigned] = useState(true);
   const [professorId, setProfessorId] = useState("");
   const [method, setMethod] = useState("");
   const [payState, setPayState] = useState("");
@@ -47,7 +48,7 @@ export default function PaymentsDashboardPage() {
       ignore = true;
     };
   }, [branchId]);
-  
+
   useEffect(() => {
     if (user && user?.role !== "admin") {
       route.push(`/${branchId}`);
@@ -58,12 +59,13 @@ export default function PaymentsDashboardPage() {
     const qp = new URLSearchParams();
     qp.set("year", String(year));
     qp.set("month", String(month));
+    qp.set("assigned", assigned);
     if (branchId) qp.set("branchId", branchId);
     if (professorId) qp.set("professorId", professorId);
     if (method) qp.set("method", method);
     if (payState) qp.set("payState", payState);
     return qp;
-  }, [year, month, branchId, professorId, method, payState]);
+  }, [year, month, branchId, professorId, method, payState, assigned]);
 
   async function reload() {
     setLoading(true);
@@ -152,6 +154,24 @@ export default function PaymentsDashboardPage() {
                   {m}
                 </option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label
+              className="block text-sm mb-1 font-medium"
+              style={{ color: `${BRAND.text}CC` }}
+            >
+              Asignado
+            </label>
+            <select
+              value={assigned}
+              onChange={(e) => setAssigned(e.target.value)}
+              className="w-full rounded-xl border bg-white/90 px-3 py-2 shadow-sm outline-none transition focus:ring-2"
+              style={{ borderColor: BRAND.soft, color: BRAND.text }}
+            >
+              <option value="">Todos</option>
+              <option value={true}>Sí</option>
+              <option value={false}>No</option>
             </select>
           </div>
 

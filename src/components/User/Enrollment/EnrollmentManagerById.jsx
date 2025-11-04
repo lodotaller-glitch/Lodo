@@ -327,7 +327,7 @@ export default function EnrollmentManagerById({
                   >
                     Eliminar
                   </button>
-                  <PayPreview pay={e.pay} />
+                  <PayPreview pay={!e?.pay2 ? e.pay : e.pay2} />
                   <StateBadge assigned={!!e.assigned} />
                   {user?.role === "admin" || user?.role === "networks" ? (
                     <button

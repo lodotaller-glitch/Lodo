@@ -25,6 +25,11 @@ export async function GET(req) {
     const method = searchParams.get("method"); // transferencia/efectivo/otro/no_aplica
     const payState = searchParams.get("payState"); // pendiente/señado/pagado/cancelado
     const state = searchParams.get("state") || "activa"; // estado de inscripción
+    const assignedParam = searchParams.get("assigned") || true; // estado de inscripción
+
+    let assigned;
+    if (assignedParam === "true") assigned = true;
+    else if (assignedParam === "false") assigned = false;
 
     if (
       !Number.isInteger(year) ||
@@ -38,8 +43,11 @@ export async function GET(req) {
       );
     }
 
-    const q = { year, month, state, assigned: true };
+    const q = { year, month, state };
 
+    if (assigned !== undefined) {
+      q.assigned = assigned;
+    }
     if (branchId) {
       const bid = toObjId(branchId);
       if (bid) q.branch = bid;
@@ -48,8 +56,17 @@ export async function GET(req) {
       const pid = toObjId(professorId);
       if (pid) q.professor = pid;
     }
-    if (method) q["pay.method"] = method;
-    if (payState) q["pay.state"] = payState;
+    if (method) {
+      q.$or = [{ "pay.method": method }, { "pay2.method": method }];
+    }
+    if (payState) {
+      // Si ya existe un $or (por method), lo agregamos; si no, lo creamos
+      q.$or = [
+        ...(q.$or || []),
+        { "pay.state": payState },
+        { "pay2.state": payState },
+      ];
+    }
 
     const items = await Enrollment.find(q)
       .select("student professor year month pay pay2 state")
