@@ -17,6 +17,7 @@ export default function ProfessorClassesPage({ params }) {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [assigned, setAssigned] = useState(true);
 
   // 🧑‍🏫 Cargar profesores
   useEffect(() => {
@@ -43,7 +44,7 @@ export default function ProfessorClassesPage({ params }) {
       if (!year || !month) return;
       setLoading(true);
       try {
-        const q = new URLSearchParams({ year, month });
+        const q = new URLSearchParams({ year, month, assigned });
         if (selectedProf) q.set("professor", selectedProf);
         const { data } = await api.get(
           `${branchId}/professors/classes?${q.toString()}`
@@ -58,7 +59,7 @@ export default function ProfessorClassesPage({ params }) {
       }
     }
     loadClasses();
-  }, [year, month, selectedProf]);
+  }, [year, month, selectedProf, assigned]);
 
   const formatted = useMemo(() => {
     const map = {};
@@ -172,10 +173,28 @@ export default function ProfessorClassesPage({ params }) {
             ))}
           </select>
         </div>
+        <div>
+          <label
+            className="block text-sm mb-1 font-medium"
+            style={{ color: `${BRAND.text}CC` }}
+          >
+            Asignado
+          </label>
+          <select
+            value={assigned}
+            onChange={(e) => setAssigned(e.target.value)}
+            className="w-full rounded-xl border bg-white/90 px-3 py-2 shadow-sm outline-none transition focus:ring-2"
+            style={{ borderColor: BRAND.soft, color: BRAND.text }}
+          >
+            <option value="">Todos</option>
+            <option value={true}>Sí</option>
+            <option value={false}>No</option>
+          </select>
+        </div>
       </div>
 
       {/* 📊 Contenido principal */}
-      <div className="bg-white rounded-2xl shadow p-6 min-h-[200px]">
+      <div className="bg-white rounded-2xl shadow p-6 min-h-[200px] w-full">
         {loading ? (
           <div className="flex justify-center items-center h-40">
             <ClipLoader color={BRAND.main} size={45} />
@@ -194,8 +213,9 @@ export default function ProfessorClassesPage({ params }) {
                 {professor}
               </h2>
 
+              {/* CONTENEDOR CON SCROLL HORIZONTAL */}
               <div
-                className="overflow-hidden rounded-xl border"
+                className="overflow-x-auto rounded-xl border"
                 style={{ borderColor: BRAND.soft }}
               >
                 <table className="min-w-full text-sm">
@@ -206,10 +226,18 @@ export default function ProfessorClassesPage({ params }) {
                     }}
                   >
                     <tr>
-                      <th className="px-4 py-2 text-left">Día</th>
-                      <th className="px-4 py-2 text-left">Inicio</th>
-                      <th className="px-4 py-2 text-left">Fin</th>
-                      <th className="px-4 py-2 text-left">Alumnos</th>
+                      <th className="px-4 py-2 text-left whitespace-nowrap">
+                        Día
+                      </th>
+                      <th className="px-4 py-2 text-left whitespace-nowrap">
+                        Inicio
+                      </th>
+                      <th className="px-4 py-2 text-left whitespace-nowrap">
+                        Fin
+                      </th>
+                      <th className="px-4 py-2 text-left whitespace-nowrap">
+                        Alumnos
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -223,14 +251,16 @@ export default function ProfessorClassesPage({ params }) {
                           key={i}
                           className="border-t hover:bg-gray-50 transition"
                         >
-                          <td className="px-4 py-2">
+                          <td className="px-4 py-2 whitespace-nowrap">
                             {getDayName(c.dayOfWeek)}
                           </td>
-                          <td className="px-4 py-2">
+                          <td className="px-4 py-2 whitespace-nowrap">
                             {formatTime(c.startMin)}
                           </td>
-                          <td className="px-4 py-2">{formatTime(c.endMin)}</td>
-                          <td className="px-4 py-2 font-semibold text-right">
+                          <td className="px-4 py-2 whitespace-nowrap">
+                            {formatTime(c.endMin)}
+                          </td>
+                          <td className="px-4 py-2 font-semibold text-left sm:text-right whitespace-nowrap">
                             {c.studentsCount}
                           </td>
                         </tr>

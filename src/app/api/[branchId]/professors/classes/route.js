@@ -10,6 +10,7 @@ export async function GET(req, { params }) {
     const { searchParams } = new URL(req.url);
     const year = parseInt(searchParams.get("year"));
     const month = parseInt(searchParams.get("month"));
+    const assigned = searchParams.get("assigned") || "true";
     const professorId = searchParams.get("professor");
     if (!year || !month) {
       return NextResponse.json(
@@ -26,9 +27,8 @@ export async function GET(req, { params }) {
       effectiveFrom: { $lte: startOfMonth },
       $or: [{ effectiveTo: null }, { effectiveTo: { $gte: startOfMonth } }],
     };
-    
-    if (professorId) scheduleFilter.professor = professorId;
 
+    if (professorId) scheduleFilter.professor = professorId;
     const schedules = await ProfessorSchedule.find(scheduleFilter)
       .populate("professor", "name email")
       .lean();
@@ -50,6 +50,7 @@ export async function GET(req, { params }) {
           professor: professor._id,
           year,
           month,
+          assigned: assigned !== "false" ? true : false,
           state: "activa",
           "chosenSlots.dayOfWeek": dayOfWeek,
           "chosenSlots.startMin": startMin,
