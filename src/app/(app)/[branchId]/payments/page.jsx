@@ -15,7 +15,7 @@ function ymNow() {
 export default function PaymentsDashboardPage() {
   const { user } = useAuth();
   const { branchId } = useParams() || "";
-  const route = useRouter();
+  const router = useRouter();
 
   const { year: y0, month: m0 } = ymNow();
   const [year, setYear] = useState(y0);
@@ -51,7 +51,7 @@ export default function PaymentsDashboardPage() {
 
   useEffect(() => {
     if (user && user?.role !== "admin") {
-      route.push(`/${branchId}`);
+      router.push(`/${branchId}`);
     }
   }, [user]);
 
@@ -101,7 +101,7 @@ export default function PaymentsDashboardPage() {
   return (
     <main className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
       <div
-        className="rounded-2xl border px-4 py-3 sm:px-6"
+        className="rounded-2xl border px-4 py-3 sm:px-6 flex items-center justify-between"
         style={{
           borderColor: BRAND.soft,
           background: `linear-gradient(180deg, ${BRAND.soft}55, transparent)`,
@@ -110,6 +110,13 @@ export default function PaymentsDashboardPage() {
         <h1 className="text-2xl font-semibold" style={{ color: BRAND.text }}>
           Pagos del mes
         </h1>
+        <button
+          onClick={() => router.push(`/${branchId}/payments/classes`)}
+          className="px-4 py-2 rounded-xl text-white shadow"
+          style={{ background: BRAND.main }}
+        >
+          Total de Clases
+        </button>
       </div>
 
       {/* Filtros */}

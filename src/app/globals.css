@@ -16,27 +16,6 @@ form {
   @apply flex-grow basis-64;
 }
 
-.btn-orange {
-  @apply bg-orange-500 text-white p-2 w-full rounded-xl hover:bg-orange-600 transition-all hover:scale-105;
-}
-.btn-green {
-  @apply bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition w-full hover:scale-105;
-}
-.btn-blue {
-  @apply bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition w-full hover:scale-105;
-}
-.btn-red {
-  @apply bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition w-full hover:scale-105;
-}
-
-.inp-orange {
-  @apply bg-white text-black w-full p-2 rounded-xl border border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-400;
-}
-
-.select-orange {
-  @apply bg-white text-black w-full p-2 rounded-xl border border-orange-300;
-}
-
 .login-bg {
   background-image: linear-gradient(
       0deg,
