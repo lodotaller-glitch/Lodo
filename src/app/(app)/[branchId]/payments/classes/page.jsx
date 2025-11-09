@@ -45,13 +45,11 @@ export default function ProfessorClassesPage({ params }) {
       try {
         const q = new URLSearchParams({ year, month });
         if (selectedProf) q.set("professor", selectedProf);
-        const res = await api.get(
+        const { data } = await api.get(
           `${branchId}/professors/classes?${q.toString()}`
         );
-        if (res.statusText !== "OK")
-          throw new Error("Error al obtener los datos");
-        const js = res.data;
-        setClasses(Array.isArray(js) ? js : []);
+        if (!data.length) throw new Error("Error al obtener los datos");
+        setClasses(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error(err);
         setClasses([]);
