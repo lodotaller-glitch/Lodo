@@ -115,7 +115,7 @@ export default function PaymentsDashboardPage() {
           className="px-4 py-2 rounded-xl text-white shadow"
           style={{ background: BRAND.main }}
         >
-          Total de Clases
+          Total de Alumnos
         </button>
       </div>
 

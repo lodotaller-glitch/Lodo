@@ -5,6 +5,9 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Swal from "sweetalert2";
 import api from "@/lib/axios";
+import { formatInTimeZone } from "date-fns-tz";
+import { es } from "date-fns/locale";
+import { addHours } from "date-fns";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
@@ -282,29 +285,72 @@ export default function AdhocClassesPage() {
               >
                 <div>
                   <strong>
-                    {new Date(c.date).toLocaleDateString("es-AR", {
-                      timeZone: "UTC",
-                    })}{" "}
-                    — {Math.floor(c.slotSnapshot.startMin / 60)}:
-                    {String(c.slotSnapshot.startMin % 60).padStart(2, "0")} /{" "}
-                    {Math.floor(c.slotSnapshot.endMin / 60)}:
-                    {String(c.slotSnapshot.endMin % 60).padStart(2, "0")}
+                    {formatInTimeZone(
+                      addHours(new Date(c.date), 3),
+                      "America/Argentina/Buenos_Aires",
+                      "EEE d 'de' MMM yyyy",
+                      { locale: es }
+                    )}{" "}
+                    —{" "}
+                    {`${String(
+                      Math.floor(c.slotSnapshot.startMin / 60)
+                    ).padStart(2, "0")}:${String(
+                      c.slotSnapshot.startMin % 60
+                    ).padStart(2, "0")} a ${String(
+                      Math.floor(c.slotSnapshot.endMin / 60)
+                    ).padStart(2, "0")}:${String(
+                      c.slotSnapshot.endMin % 60
+                    ).padStart(2, "0")}`}
                   </strong>
-                  <p className="text-sm text-gray-600">
-                    {c.students?.length || 0} / {c.capacity} alumnos
-                  </p>
                 </div>
-                <button
-                  onClick={() => deleteClass(c._id)}
-                  className="mt-2 sm:mt-0 rounded-xl border px-3 py-1 text-sm font-medium transition hover:bg-red-50"
-                  style={{
-                    borderColor: "#FCA5A5",
-                    color: "#991B1B",
-                    background: "#fff",
-                  }}
-                >
-                  Eliminar
-                </button>
+                <div className="flex flex-wrap justify-center gap-3 mt-3">
+                  <button
+                    onClick={() => deleteClass(c._id)}
+                    className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm transition hover:bg-red-100 hover:border-red-400 hover:text-red-800 active:scale-95"
+                  >
+                    Eliminar
+                  </button>
+
+                  <form
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append("file", file);
+                      try {
+                        const res = await api.post(
+                          `/${branchId}/adhoc-classes/${c._id}/upload`,
+                          formData,
+                          { headers: { "Content-Type": "multipart/form-data" } }
+                        );
+                        const data = res.data;
+                        Swal.fire(
+                          "Carga completada",
+                          `Se registraron ${
+                            data.creados
+                          } alumnos.\nNo encontrados: ${
+                            data.noEncontrados.join(", ") || "ninguno"
+                          }`,
+                          "success"
+                        );
+                      } catch (err) {
+                        Swal.fire(
+                          "Error",
+                          err.response?.data?.error ||
+                            "No se pudo procesar el archivo",
+                          "error"
+                        );
+                      } finally {
+                        e.target.value = "";
+                      }
+                    }}
+                  >
+                    <label className="inline-flex items-center justify-center rounded-xl border border-green-300 bg-white px-4 py-2 text-sm font-medium text-green-700 shadow-sm transition hover:bg-green-100 hover:border-green-400 hover:text-green-800 active:scale-95 cursor-pointer">
+                      Subir Excel
+                      <input type="file" accept=".xlsx" className="hidden" />
+                    </label>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>
