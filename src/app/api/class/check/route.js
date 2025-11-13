@@ -73,7 +73,7 @@ async function handleCheck({ req, payload, adhoc }) {
   }
 
   // Ventana de check-in: desde 15 min antes hasta 3h después
-  const now = Date.now();
+  const now = Date.now() - 3 * 60 * 60 * 1000;
   const startsAt = +startDate;
   const OPEN_BEFORE_MS = 15 * 60 * 1000; // 15 minutos antes
   const OPEN_AFTER_MS = 3 * 60 * 60 * 1000; // 3 horas después
