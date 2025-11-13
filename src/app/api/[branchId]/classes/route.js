@@ -191,6 +191,7 @@ export async function GET(req, { params }) {
           .filter((x) => x && x !== "null"),
       ]),
     ];
+console.log(date, "date");
 
     const attRegular = allEnrollmentIds.length
       ? await Attendance.find({
@@ -198,9 +199,10 @@ export async function GET(req, { params }) {
           enrollment: { $in: allEnrollmentIds },
           origin: { $in: [null, "regular"] },
         })
-          .select("enrollment status removed")
+          // .select("enrollment status removed")
           .lean()
       : [];
+    console.log(attRegular, "attRegular");
 
     const attByEnrollment = new Map(
       attRegular.map((a) => [String(a.enrollment), a])

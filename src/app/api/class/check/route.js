@@ -77,6 +77,8 @@ async function handleCheck({ req, payload, adhoc }) {
   const OPEN_OFFSET_MS = (2 * 60 + 45) * 60 * 1000;
 
   if (now < startsAt + OPEN_OFFSET_MS || now > startsAt + 6 * 60 * 60 * 1000) {
+    console.log("Fuera de ventana de check-in");
+    
     return new NextResponse("Fuera de ventana de check-in", {
       status: 403,
       headers: { "content-type": "text/plain" },
@@ -86,6 +88,8 @@ async function handleCheck({ req, payload, adhoc }) {
   // Alumno
   const student = await User.findById(actor._id).select("_id").lean();
   if (!student) {
+    console.log("Alumno no encontrado");
+    
     return new NextResponse("Alumno no encontrado", {
       status: 404,
       headers: { "content-type": "text/plain" },
@@ -268,6 +272,7 @@ async function handleCheck({ req, payload, adhoc }) {
   // ------------------------------------------------------------------
   // D) No habilitado
   // ------------------------------------------------------------------
+      console.log("No estás inscripto en esta clase");
   return new NextResponse("No estás inscripto en esta clase", {
     status: 403,
     headers: { "content-type": "text/plain" },
