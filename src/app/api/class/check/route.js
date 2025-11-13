@@ -75,15 +75,15 @@ async function handleCheck({ req, payload, adhoc }) {
   // Ventana de check-in: desde 15 min antes hasta 3h después
   const now = Date.now();
   const startsAt = +startDate;
-  const OPEN_BEFORE_MS = 15 * 60 * 1000;
-  const OPEN_AFTER_MS = 3 * 60 * 60 * 1000;
+  const OPEN_BEFORE_MS = 15 * 60 * 1000; // 15 minutos antes
+  const OPEN_AFTER_MS = 3 * 60 * 60 * 1000; // 3 horas después
 
   if (now < startsAt - OPEN_BEFORE_MS || now > startsAt + OPEN_AFTER_MS) {
-    console.log(now, "now");
-    console.log(startDate, "startDate");
-    console.log(startsAt, "startsAt");
-    
-    console.log("Fuera de ventana de check-in");
+    console.log("Fuera de ventana de check-in", {
+      now: new Date(now).toISOString(),
+      startsAt: new Date(startsAt).toISOString(),
+      diffMin: (now - startsAt) / 60000,
+    });
     return new NextResponse("Fuera de ventana de check-in", {
       status: 403,
       headers: { "content-type": "text/plain" },
