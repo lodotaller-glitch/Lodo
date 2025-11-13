@@ -191,18 +191,30 @@ export async function GET(req, { params }) {
           .filter((x) => x && x !== "null"),
       ]),
     ];
-console.log(date, "date");
+    // console.log(date, "date");
 
     const attRegular = allEnrollmentIds.length
       ? await Attendance.find({
-          date,
+          date: { $gte: dayStart, $lte: dayEnd },
           enrollment: { $in: allEnrollmentIds },
           origin: { $in: [null, "regular"] },
         })
           // .select("enrollment status removed")
           .lean()
       : [];
-    console.log(attRegular, "attRegular");
+    // console.log(attRegular, "attRegular");
+
+    const markedBeforeDay = await Attendance.find({
+  $expr: {
+    $lt: [
+      { $dateTrunc: { date: "$markedAt", unit: "day" } },
+      { $dateTrunc: { date: "$date", unit: "day" } }
+    ]
+  }
+});
+
+// console.log(markedBeforeDay, "markedBeforeDay");
+
 
     const attByEnrollment = new Map(
       attRegular.map((a) => [String(a.enrollment), a])
@@ -236,7 +248,7 @@ console.log(date, "date");
 
     // 8) AD-HOC de ese día y slot (se mantiene igual)
     const adhocAttendances = await Attendance.find({
-      date,
+      date: { $gte: dayStart, $lte: dayEnd },
       branch: branchId,
       professor: professorId,
       origin: "adhoc",
