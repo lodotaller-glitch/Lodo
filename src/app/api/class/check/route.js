@@ -79,6 +79,10 @@ async function handleCheck({ req, payload, adhoc }) {
   const OPEN_AFTER_MS = 3 * 60 * 60 * 1000;
 
   if (now < startsAt - OPEN_BEFORE_MS || now > startsAt + OPEN_AFTER_MS) {
+    console.log(now, "now");
+    console.log(startDate, "startDate");
+    console.log(startsAt, "startsAt");
+    
     console.log("Fuera de ventana de check-in");
     return new NextResponse("Fuera de ventana de check-in", {
       status: 403,
