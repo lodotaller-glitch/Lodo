@@ -204,14 +204,14 @@ export async function GET(req, { params }) {
       : [];
     // console.log(attRegular, "attRegular");
 
-    const markedBeforeDay = await Attendance.find({
-  $expr: {
-    $lt: [
-      { $dateTrunc: { date: "$markedAt", unit: "day" } },
-      { $dateTrunc: { date: "$date", unit: "day" } }
-    ]
-  }
-});
+//     const markedBeforeDay = await Attendance.find({
+//   $expr: {
+//     $lt: [
+//       { $dateTrunc: { date: "$markedAt", unit: "day" } },
+//       { $dateTrunc: { date: "$date", unit: "day" } }
+//     ]
+//   }
+// });
 
 // console.log(markedBeforeDay, "markedBeforeDay");
 
