@@ -260,7 +260,7 @@ export default function ReprogramarClasePage({ searchParams }) {
       ) : (
         <ul className="grid gap-3">
           {options.map((opt, idx) =>
-            opt?.capacityLeft <= 0 ? null : (
+            opt?.capacityLeft <= 0 || opt?.disabled ? null : (
               <li key={idx}>
                 <OptionCard
                   opt={opt}

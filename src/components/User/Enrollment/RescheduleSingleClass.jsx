@@ -196,7 +196,12 @@ export default function RescheduleSingleClass({ enrollment, onDone }) {
               key={i}
               className={`px-3 py-2 rounded-2xl border text-left shadow-sm transition hover:shadow`}
               style={{
-                background: selectedFrom === o.start ? "#A08775" : "#fff",
+                background:
+                  selectedFrom === o.start
+                    ? "#A08775"
+                    : o?.disabled
+                    ? "#FFD700"
+                    : "#fff",
                 borderColor: selectedFrom === o.start ? "#A08775" : "#DDD7C9",
                 color: selectedFrom === o.start ? "#fff" : "#1F1C19",
               }}
@@ -284,7 +289,7 @@ export default function RescheduleSingleClass({ enrollment, onDone }) {
                     : "hover:shadow"
                 }`}
                 style={{
-                  background: "#fff",
+                  background: opt?.disabled ? "#FFD700" : "#fff",
                   borderColor: "#DDD7C9",
                   opacity: opt.status !== "available" || saving ? 0.6 : 1,
                 }}

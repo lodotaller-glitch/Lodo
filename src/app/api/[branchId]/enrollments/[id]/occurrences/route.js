@@ -1,6 +1,13 @@
 import { NextResponse as ___NR } from "next/server";
 import dbConnect from "@/lib/dbConnect";
-import { Enrollment, StudentReschedule, Attendance } from "@/models"; // 👈 sumar Attendance
+import {
+  Enrollment,
+  StudentReschedule,
+  Attendance,
+  DisabledClass,
+} from "@/models"; // 👈 sumar Attendance
+import { slotKey } from "@/functions/slotKey";
+import { buildDateTimeUTC } from "@/functions/date";
 
 // --- helpers ---
 function* iterMonthOccurrences(year, month, slot) {
@@ -88,7 +95,25 @@ export async function GET(_req, { params }) {
     const monthStart = startOfMonthUTC(year, month);
     const monthEnd = endOfMonthUTC(year, month); // 👈 límite superior para ad-hoc
 
+    // 🔸 Disabled classes del mes (para este enrollment)
+    const disabledDocs = await DisabledClass.find({
+      start: { $gte: monthStart.toISOString(), $lte: monthEnd.toISOString() },
+    }).lean();
+
+    const disabledKeys = new Set(disabledDocs.map((d) => d.key));
+
+    // util para construir el key compatible
+    function disabledKey(start, slot) {
+      const startISO = buildDateTimeUTC(
+        new Date(start),
+        slot.startMin
+      ).toISOString();
+      const k = slotKey(slot, en.professor);
+      return `${startISO}_${k}`;
+    }
+
     // 1) Ocurrencias base
+
     const base = [];
     for (const s of en.chosenSlots || []) {
       for (const occ of iterMonthOccurrences(year, month, s)) {
@@ -97,6 +122,7 @@ export async function GET(_req, { params }) {
           end: occ.end.toISOString(),
           slot: s,
           origin: "base",
+          disabled: disabledKeys.has(disabledKey(occ.start, s)),
         });
       }
     }
@@ -153,6 +179,7 @@ export async function GET(_req, { params }) {
                 : undefined,
               toDate: new Date(r.toDate).toISOString(),
             },
+            disabled: disabledKeys.has(disabledKey(start, r.slotTo)),
           });
         }
       }
@@ -184,6 +211,7 @@ export async function GET(_req, { params }) {
         slot: a.slotSnapshot,
         origin: "adhoc",
         attendanceRef: { _id: String(a._id), status: a.status },
+        disabled: disabledKeys.has(disabledKey(start, a.slotSnapshot)),
       });
     }
 

@@ -3,8 +3,9 @@
 import { useMemo, useEffect, useRef, useState, use } from "react";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react"; // ★ también Canvas
 import { useAuth } from "@/context/AuthContext";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { addHours } from "date-fns";
+import api from "@/lib/axios";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
@@ -36,15 +37,22 @@ export default function ProfessorClassPage({ searchParams }) {
   const { start, slot, enrollmentId, adhoc } = use(searchParams); // ya viene por props
   const { user } = useAuth();
   const { branchId } = useParams();
+  const router = useRouter();
 
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [disabled, setDisabled] = useState(false);
+  const [disabling, setDisabling] = useState(false);
 
   // ★ refs para imprimir/descargar
   const qrBoxRef = useRef(null);
   const qrCanvasRef = useRef(null);
 
   useEffect(() => {
+    getClass();
+  }, [user, start, slot, branchId]);
+
+  async function getClass() {
     if (!user || !start || !slot || !branchId) return;
     const controller = new AbortController();
     (async () => {
@@ -55,16 +63,19 @@ export default function ProfessorClassPage({ searchParams }) {
             start
           )}&slot=${encodeURIComponent(slot)}&adhoc=${encodeURIComponent(
             adhoc
-          )}`,
+          )}&enrollmentId=${encodeURIComponent(enrollmentId || "")}`,
           { signal: controller.signal }
         );
         const data = await res.json();
-        if (res.ok) setStudents(data.students || []);
+        if (res.ok) {
+          setStudents(data.students || []);
+          setDisabled(data.disabled || false);
+        }
       } catch {}
       setLoading(false);
     })();
     return () => controller.abort();
-  }, [user, start, slot, branchId]);
+  }
 
   function toggleAttendance(student) {
     if (!user || !branchId) return;
@@ -275,6 +286,40 @@ export default function ProfessorClassPage({ searchParams }) {
     } catch {}
   }
 
+  async function changeClass() {
+    if (!branchId || !start || !slot || !enrollmentId) return;
+
+    const action = disabled ? "habilitar" : "deshabilitar";
+    const confirmMsg = `¿Seguro que querés ${action} esta clase?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      setDisabling(true);
+
+      const res = await api.patch(`/${branchId}/classes/disable`, {
+        enrollmentId,
+        start,
+        slot,
+      });
+
+      const newState = res?.disabled; // true = deshabilitada, false = habilitada
+
+      alert(
+        newState
+          ? "Clase deshabilitada correctamente."
+          : "Clase habilitada nuevamente."
+      );
+
+      getClass();
+    } catch (err) {
+      console.error(err);
+      alert(`No se pudo ${disabled ? "habilitar" : "deshabilitar"} la clase.`);
+    } finally {
+      setDisabling(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className="mx-auto max-w-5xl p-4 sm:p-6">
@@ -314,16 +359,25 @@ export default function ProfessorClassPage({ searchParams }) {
               </p>
             )}
           </div>
-          <span
-            className="rounded-full px-3 py-1 text-xs"
-            style={{
-              backgroundColor: BRAND.soft,
-              color: BRAND.text,
-              border: `1px solid ${BRAND.main}55`,
-            }}
+          <button
+            onClick={changeClass}
+            disabled={disabling}
+            className={`rounded-xl px-3 py-1.5 text-sm font-medium shadow-sm transition hover:shadow disabled:opacity-50
+    ${
+      disabled
+        ? "bg-yellow-500 hover:bg-yellow-600 text-black"
+        : "bg-red-600 hover:bg-red-700 text-white"
+    }
+  `}
           >
-            {parseSlot(slot || "-").professorId || "—"}
-          </span>
+            {disabling
+              ? disabled
+                ? "Habilitando..."
+                : "Deshabilitando..."
+              : disabled
+              ? "Clase deshabilitada • Habilitar"
+              : "Deshabilitar clase"}
+          </button>
         </div>
       </div>
 

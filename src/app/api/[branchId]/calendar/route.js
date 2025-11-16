@@ -4,7 +4,8 @@ import {
   Enrollment,
   User,
   StudentReschedule,
-  Attendance, // 👈 ADHOC: importar Attendance
+  Attendance,
+  DisabledClass, // 👈 ADHOC: importar Attendance
 } from "@/models";
 import dbConnect from "@/lib/dbConnect";
 import { slotKey } from "@/functions/slotKey";
@@ -88,6 +89,14 @@ export async function GET(req, { params }) {
       effectiveFrom: { $lte: monthStart },
       $or: [{ effectiveTo: null }, { effectiveTo: { $gt: monthStart } }],
     }).lean();
+
+    // 🔴 Disabled classes del mes
+    const disabledClasses = await DisabledClass.find({
+      start: { $gte: monthStart.toISOString(), $lte: monthEnd.toISOString() },
+    }).lean();
+
+    // Crear un Set rápido para lookup
+    const disabledKeys = new Set(disabledClasses.map((d) => d.key));
 
     // Filtrado opcional por professorIds
     let filtroIds = null;
@@ -248,6 +257,9 @@ export async function GET(req, { params }) {
           const leftDay = Math.max(0, capacity - takenDay);
           const status = leftDay > 0 ? "available" : "full";
 
+          const startISO = buildDateTimeUTC(day, s.startMin).toISOString();
+          const disabled = disabledKeys.has(`${startISO}_${k}`);
+
           events.push({
             title: `${profName} (${takenDay}/${capacity})`,
             start: buildDateTimeUTC(day, s.startMin),
@@ -258,6 +270,7 @@ export async function GET(req, { params }) {
             weekday: s.dayOfWeek,
             capacityLeft: leftDay,
             status,
+            disabled, // 👈 agregado
             _id: sc._id,
           });
         }
@@ -280,8 +293,12 @@ export async function GET(req, { params }) {
         ac.capacity || Math.max(1, Number(userById.get(pid)?.capacity ?? 10));
       const leftDay = Math.max(0, capacity - takenDay);
       const status = leftDay > 0 ? "available" : "full";
+      const startISO2 = buildDateTimeUTC(
+        new Date(ac.date),
+        ac.slotSnapshot.startMin
+      ).toISOString();
+      const disabled2 = disabledKeys.has(`${startISO2}_${k}`);
 
-      // start/end times
       events.push({
         title: `${
           userById.get(pid)?.name || "Profesor"
@@ -293,6 +310,7 @@ export async function GET(req, { params }) {
         slotKey: k,
         capacityLeft: leftDay,
         status,
+        disabled: disabled2, // 👈 agregado
         _id: ac._id,
         isAdhocClass: true,
       });

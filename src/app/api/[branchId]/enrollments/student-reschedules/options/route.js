@@ -5,7 +5,9 @@ import {
   ProfessorSchedule,
   StudentReschedule,
   Attendance,
+  DisabledClass,
 } from "@/models";
+import { slotKey } from "@/functions/slotKey";
 
 function isFifthUTC(d) {
   const dow = d.getUTCDay();
@@ -67,6 +69,14 @@ export async function GET(req, { params }) {
     })
       .select("professor chosenSlots")
       .lean();
+
+    // === Disabled classes relevantes al rango
+    const disabledDocs = await DisabledClass.find({
+      start: { $gte: windowStart.toISOString(), $lte: windowEnd.toISOString() },
+    }).lean();
+
+    // Mapeo rápido para lookup O(1)
+    const disabledKeys = new Set(disabledDocs.map((d) => d.key));
 
     // Mapa: professorId -> array de {dayOfWeek, startMin, endMin} donde YA está el estudiante
     const occupiedByProf = new Map();
@@ -241,9 +251,17 @@ export async function GET(req, { params }) {
         const cap = d.capacity ?? 0;
         const capacityLeft = Math.max(0, cap - effective);
 
+        const key = `${start.toISOString()}_${slotKey(
+          d.slotTo,
+          d.professorId
+        )}`;
+
+        const disabled = disabledKeys.has(key);
+
         return {
           ...d,
           capacityLeft,
+          disabled,
           status: capacityLeft > 0 ? "available" : "full",
           meta: {
             base,
