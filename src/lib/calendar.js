@@ -5,6 +5,7 @@ import {
   User,
   StudentReschedule,
   Attendance,
+  DisabledClass,
 } from "@/models"; // 👈 +StudentReschedule
 import dbConnect from "./dbConnect";
 import { slotKey } from "@/functions/slotKey";
@@ -98,14 +99,26 @@ export async function getProfessorMonthCalendar({ professorId, year, month }) {
       },
     ],
   })
-    .select("chosenSlots")
+    .select("chosenSlots _id")
     .lean();
 
   // 4) conteo base por (slotKey mensual, sin fecha)
+  const disabledDocs = await DisabledClass.find({
+    start: { $gte: monthStart.toISOString(), $lte: monthEnd.toISOString() },
+  }).lean();
+
+  // Set con todas las keys disabled del mes
+  const disabledKeys = new Set(disabledDocs.map((d) => d.key));
+
   const countBySlot = new Map();
+
   for (const e of enrollments) {
     for (const s of e.chosenSlots || []) {
       const k = slotKey(s, String(professorId));
+
+      // 💥 Si la clase está deshabilitada, NO se suma al conteo de tomados
+      if (disabledKeys.has(k)) continue;
+
       countBySlot.set(k, (countBySlot.get(k) || 0) + 1);
     }
   }
@@ -218,7 +231,10 @@ export async function getProfessorMonthCalendar({ professorId, year, month }) {
         takenBase - outDay + inDay + adhocDay - removedDay
       );
       const left = Math.max(0, capacity - takenDay);
+      const start = buildDateTimeUTC(day, s.startMin);
 
+      const isCancelled = disabledKeys.has(`${start.toISOString()}_${k}`);
+      if (isCancelled) continue;
       events.push({
         title: `Clase (${takenDay}/${capacity})`,
         start: buildDateTimeUTC(day, s.startMin),
@@ -242,7 +258,9 @@ export async function getProfessorMonthCalendar({ professorId, year, month }) {
     const takenDay = Math.max(takenFromEnrolls, adhocAttendanceCount);
     const capacity = ac.capacity || schedule.capacity || 10;
     const leftDay = Math.max(0, capacity - takenDay);
-
+    const start = buildDateTimeUTC(new Date(ac.date), ac.slotSnapshot.startMin);
+    const isCancelled = disabledKeys.has(`${start.toISOString()}_${k}`);
+    if (isCancelled) continue;
     events.push({
       title: `Clase ad-hoc (${takenDay}/${capacity})`,
       start: buildDateTimeUTC(new Date(ac.date), ac.slotSnapshot.startMin),
@@ -321,6 +339,13 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
     .lean();
 
   if (!enrollment) return [];
+
+  const disabledList = await DisabledClass.find({
+    start: { $gte: monthStart.toISOString(), $lte: monthEnd.toISOString() },
+  }).lean();
+
+  // Hacemos un Set para lookup rápido
+  const disabledKeys = new Set(disabledList.map((d) => d.key));
 
   const pid = enrollment.professor?._id?.toString() || "";
 
@@ -553,8 +578,14 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
     (a, b) => new Date(a.start) - new Date(b.start)
   );
 
+  // Filtrar clases canceladas para estudiantes
+  const eventsFiltered = events.filter((ev) => {
+    const k = `${new Date(ev.start).toISOString()}_${ev.slotKey}`;
+    return !disabledKeys.has(k);
+  });
+
   // ——— 8) normalizar fechas a ISO ———
-  return events.map((ev) => ({
+  return eventsFiltered.map((ev) => ({
     ...ev,
     start: new Date(ev.start).toISOString(),
     end: new Date(ev.end).toISOString(),

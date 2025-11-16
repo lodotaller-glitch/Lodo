@@ -1,7 +1,13 @@
 // /app/api/[branchId]/classes/route.js
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
-import { Enrollment, Attendance, User, StudentReschedule } from "@/models";
+import {
+  Enrollment,
+  Attendance,
+  User,
+  StudentReschedule,
+  DisabledClass,
+} from "@/models";
 import AdhocClass from "@/models/AdhocClass";
 
 function parseSlot(slot) {
@@ -43,6 +49,8 @@ export async function GET(req, { params }) {
     await dbConnect();
     const { branchId } = await params;
     const { searchParams } = new URL(req.url);
+
+    const enrollmentId = searchParams.get("enrollmentId");
     const start = searchParams.get("start");
     const slot = searchParams.get("slot");
     const adhoc = searchParams.get("adhoc");
@@ -191,7 +199,6 @@ export async function GET(req, { params }) {
           .filter((x) => x && x !== "null"),
       ]),
     ];
-    // console.log(date, "date");
 
     const attRegular = allEnrollmentIds.length
       ? await Attendance.find({
@@ -202,23 +209,15 @@ export async function GET(req, { params }) {
           // .select("enrollment status removed")
           .lean()
       : [];
-    // console.log(attRegular, "attRegular");
-
-//     const markedBeforeDay = await Attendance.find({
-//   $expr: {
-//     $lt: [
-//       { $dateTrunc: { date: "$markedAt", unit: "day" } },
-//       { $dateTrunc: { date: "$date", unit: "day" } }
-//     ]
-//   }
-// });
-
-// console.log(markedBeforeDay, "markedBeforeDay");
-
 
     const attByEnrollment = new Map(
       attRegular.map((a) => [String(a.enrollment), a])
     );
+
+    const key = `${start}_${slot}`;
+    const disabledDocs = await DisabledClass.find({
+      key,
+    }).lean();
 
     // 6) Resultado de regulares (con present)
     const resultRegular = regularActive
@@ -276,6 +275,7 @@ export async function GET(req, { params }) {
     // 9) Combinar
     return NextResponse.json({
       students: [...resultRegular, ...resultResIn, ...resultAdhoc],
+      disabled: disabledDocs.length > 0,
     });
   } catch (err) {
     console.error("GET /classes error:", err);

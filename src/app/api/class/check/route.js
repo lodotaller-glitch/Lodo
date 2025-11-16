@@ -59,7 +59,6 @@ async function handleCheck({ req, payload, adhoc }) {
       headers: { "content-type": "text/plain" },
     });
   }
-  // console.log(payload, adhoc);
 
   // Payload: { b, st, sl, e? }
   const branchId = String(payload.b || "");
@@ -79,11 +78,11 @@ async function handleCheck({ req, payload, adhoc }) {
   const OPEN_AFTER_MS = 3 * 60 * 60 * 1000; // 3 horas después
 
   if (now < startsAt - OPEN_BEFORE_MS || now > startsAt + OPEN_AFTER_MS) {
-    console.log("Fuera de ventana de check-in", {
-      now: new Date(now).toISOString(),
-      startsAt: new Date(startsAt).toISOString(),
-      diffMin: (now - startsAt) / 60000,
-    });
+    // console.log("Fuera de ventana de check-in", {
+    //   now: new Date(now).toISOString(),
+    //   startsAt: new Date(startsAt).toISOString(),
+    //   diffMin: (now - startsAt) / 60000,
+    // });
     return new NextResponse("Fuera de ventana de check-in", {
       status: 403,
       headers: { "content-type": "text/plain" },
@@ -93,8 +92,6 @@ async function handleCheck({ req, payload, adhoc }) {
   // Alumno
   const student = await User.findById(actor._id).select("_id").lean();
   if (!student) {
-    // console.log("Alumno no encontrado");
-
     return new NextResponse("Alumno no encontrado", {
       status: 404,
       headers: { "content-type": "text/plain" },
@@ -277,7 +274,6 @@ async function handleCheck({ req, payload, adhoc }) {
   // ------------------------------------------------------------------
   // D) No habilitado
   // ------------------------------------------------------------------
-  // console.log("No estás inscripto en esta clase");
   return new NextResponse("No estás inscripto en esta clase", {
     status: 403,
     headers: { "content-type": "text/plain" },

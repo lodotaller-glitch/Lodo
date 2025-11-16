@@ -43,3 +43,19 @@ export function formatSlotPlusHours(slot, hours = 2) {
   const mm = String(newMin % 60).padStart(2, "0");
   return `${hh}:${mm} ${DOW[newDOW]}`;
 }
+
+export function buildDateTimeUTC(dateOnlyUTC, minutesFromMidnight) {
+  const h = Math.floor(minutesFromMidnight / 60);
+  const m = minutesFromMidnight % 60;
+  return new Date(
+    Date.UTC(
+      dateOnlyUTC.getUTCFullYear(),
+      dateOnlyUTC.getUTCMonth(),
+      dateOnlyUTC.getUTCDate(),
+      h,
+      m,
+      0,
+      0
+    )
+  );
+}

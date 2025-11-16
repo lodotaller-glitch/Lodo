@@ -30,6 +30,7 @@ const BRAND = {
   text: "#1F1C19",
   full: "#CD5C5C",
   noFull: "#90EE90",
+  canceled: "#FFD700", // 🟡 amarillo similar a Tailwind yellow-300/400
 };
 
 // Localizer en español
@@ -172,6 +173,7 @@ export default function RoleCalendar({
         resource: ev, // queda “crudo” para tus rutas
         classStatus: ev?.classState || false,
         allDay: false,
+        disabled: ev?.disabled || false, // ⬅️ agregamos esto
       }));
       setEvents(mapped);
     } catch (err) {
@@ -238,28 +240,39 @@ export default function RoleCalendar({
       const status = event?.resource?.status;
       const profId = event?.resource?.professorId;
       const classState = event?.resource?.classState;
+      const disabled = event?.resource?.disabled; // ⬅️ agregamos esto
 
       const style = {
         borderRadius: 12,
         border: `1px solid ${BRAND.main}22`,
         borderLeft: `6px solid ${colorForProfessor(profId)}`,
-        backgroundColor:
-          role !== "student"
-            ? status === "full"
-              ? BRAND.full
-              : BRAND.noFull
-            : classState
-            ? BRAND.noFull
-            : BRAND.full,
-        color:
-          role !== "student"
-            ? status === "full"
-              ? "#fff"
-              : BRAND.text
-            : classState
-            ? BRAND.text
-            : "#fff",
+
+        // 🎨 Color de fondo
+        backgroundColor: disabled
+          ? BRAND.canceled // 🟡 si está cancelada → amarillo
+          : role !== "student"
+          ? status === "full"
+            ? BRAND.full
+            : BRAND.noFull
+          : classState
+          ? BRAND.noFull
+          : BRAND.full,
+
+        // 🎨 Color del texto
+        color: disabled
+          ? "#000" // negro para buena lectura en amarillo
+          : role !== "student"
+          ? status === "full"
+            ? "#fff"
+            : BRAND.text
+          : classState
+          ? BRAND.text
+          : "#fff",
+
+        // Opcional: opacidad visual si está cancelada
+        opacity: disabled ? 0.8 : 1,
       };
+
       return { style };
     },
     [role]
