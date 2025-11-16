@@ -518,7 +518,14 @@ export default function ProfessorClassPage({ searchParams }) {
             style={{ borderColor: BRAND.soft }}
           >
             {qrApiUrl ? (
-              <QRCodeSVG value={qrApiUrl} size={220} includeMargin />
+              <QRCodeSVG
+                value={qrApiUrl}
+                size={260}
+                includeMargin
+                level="M"
+                fgColor="#000"
+                bgColor="#fff"
+              />
             ) : (
               <span className="text-sm" style={{ color: `${BRAND.text}99` }}>
                 Generando QR…

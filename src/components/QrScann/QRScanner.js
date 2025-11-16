@@ -52,6 +52,7 @@ export default function QRScanner({
       stopScanner();
     }
   }
+  
 
   function stopScanner() {
     try {
