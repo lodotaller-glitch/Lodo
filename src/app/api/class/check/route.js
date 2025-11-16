@@ -79,11 +79,11 @@ async function handleCheck({ req, payload, adhoc }) {
   const OPEN_AFTER_MS = 3 * 60 * 60 * 1000; // 3 horas después
 
   if (now < startsAt - OPEN_BEFORE_MS || now > startsAt + OPEN_AFTER_MS) {
-    // console.log("Fuera de ventana de check-in", {
-    //   now: new Date(now).toISOString(),
-    //   startsAt: new Date(startsAt).toISOString(),
-    //   diffMin: (now - startsAt) / 60000,
-    // });
+    console.log("Fuera de ventana de check-in", {
+      now: new Date(now).toISOString(),
+      startsAt: new Date(startsAt).toISOString(),
+      diffMin: (now - startsAt) / 60000,
+    });
     return new NextResponse("Fuera de ventana de check-in", {
       status: 403,
       headers: { "content-type": "text/plain" },
