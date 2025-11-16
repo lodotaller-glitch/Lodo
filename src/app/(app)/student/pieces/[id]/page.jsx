@@ -359,7 +359,7 @@ export default function EditPiecePage() {
           >
             {saving ? "Guardando…" : "Guardar cambios"}
           </button>
-          <button
+          {/* <button
             type="button"
             onClick={onDelete}
             className="inline-flex items-center justify-center rounded-xl border px-4 py-2 font-medium transition"
@@ -370,7 +370,7 @@ export default function EditPiecePage() {
             }}
           >
             Eliminar pieza
-          </button>
+          </button> */}
         </div>
       </form>
     </div>
