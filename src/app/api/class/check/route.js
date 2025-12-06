@@ -71,12 +71,20 @@ async function handleCheck({ req, payload, adhoc }) {
     });
   }
 
+  
   // Ventana de check-in: desde 15 min antes hasta 3h después
   const now = Date.now() - 3 * 60 * 60 * 1000;
   const startsAt = +startDate;
   const OPEN_BEFORE_MS = 15 * 60 * 1000; // 15 minutos antes
   const OPEN_AFTER_MS = 3 * 60 * 60 * 1000; // 3 horas después
-
+  // console.log("Fuera de ventana de check-in", {
+  //    now: new Date(now).toISOString(),
+  //    startsAt: new Date(startsAt).toISOString(),
+  //    diffMin: (now - startsAt) / 60000,
+  //    startDate: startDate.toISOString(),
+  //    slot
+  //  });
+ 
   if (now < startsAt - OPEN_BEFORE_MS || now > startsAt + OPEN_AFTER_MS) {
     // console.log("Fuera de ventana de check-in", {
     //   now: new Date(now).toISOString(),
@@ -88,7 +96,7 @@ async function handleCheck({ req, payload, adhoc }) {
       headers: { "content-type": "text/plain" },
     });
   }
-
+  
   // Alumno
   const student = await User.findById(actor._id).select("_id").lean();
   if (!student) {
@@ -97,10 +105,10 @@ async function handleCheck({ req, payload, adhoc }) {
       headers: { "content-type": "text/plain" },
     });
   }
-
+  
   const y = startDate.getUTCFullYear();
   const m = startDate.getUTCMonth() + 1;
-
+  
   // ------------------------------------------------------------------
   // A) CLASE PROGRAMADA EN ATTENDANCE (gana prioridad)
   //    Si ya existe un Attendance para esa fecha, alumno, profe, sede
@@ -110,14 +118,17 @@ async function handleCheck({ req, payload, adhoc }) {
     student: student._id,
     professor: slot.professorId,
     branch: branchId,
-    date: startDate, // asegúrate de guardar 'date' al inicio exacto en UTC
+    date: {
+      $gte: new Date(Date.UTC(y, m - 1, startDate.getUTCDate(), 0, 0, 0)),
+      $lt: new Date(Date.UTC(y, m - 1, startDate.getUTCDate() + 1, 0, 0, 0)),
+    },
     removed: { $ne: true },
   })
-    .select("_id enrollment origin")
-    .lean();
-
+  .select("_id enrollment origin")
+  .lean();
+  
   const slotSnapshot = buildSlotSnapshot(slot);
-
+  
   if (preScheduled) {
     const update = {
       $set: {
@@ -131,32 +142,37 @@ async function handleCheck({ req, payload, adhoc }) {
     if (!preScheduled.slotSnapshot) {
       update.$set.slotSnapshot = slotSnapshot;
     }
-
+    
     await Attendance.updateOne({ _id: preScheduled._id }, update);
     return new NextResponse("OK (programada)", {
       status: 200,
       headers: { "content-type": "text/plain" },
     });
   }
-
+  
   // (Opcional) Verificar que el slot exista en el horario vigente del profe ese mes
   // Evita aceptar QR de slots inexistentes cuando NO hay Attendance pre-creado.
   const sched = await ProfessorSchedule.findActiveForDate(
     slot.professorId,
     monthAnchorUTC(startDate)
   );
+  console.log(sched);
+  
   if (!sched || !(sched.slots || []).some((s) => sameSlot(s, slot))) {
     return new NextResponse("La franja no existe en el horario vigente", {
       status: 400,
       headers: { "content-type": "text/plain" },
     });
   }
-
+  
+  console.log("hola2");
   // ------------------------------------------------------------------
   // B) ENROLLMENT REGULAR
   // ------------------------------------------------------------------
   let enrollment = null;
+  console.log("hola");
   if (adhoc === "false" || !adhoc) {
+    
     enrollment = await Enrollment.findOne({
       student: student._id,
       branch: branchId,
@@ -173,8 +189,8 @@ async function handleCheck({ req, payload, adhoc }) {
         },
       },
     })
-      .select("_id student")
-      .lean();
+    .select("_id student")
+    .lean();
   } else {
     enrollment = await AdhocClass.findOne({
       student: student._id,
@@ -250,7 +266,15 @@ async function handleCheck({ req, payload, adhoc }) {
 
   if (resch) {
     await Attendance.findOneAndUpdate(
-      { enrollment: resch.enrollment, date: startDate },
+      {
+        enrollment: resch.enrollment,
+        date: {
+          $gte: new Date(Date.UTC(y, m - 1, startDate.getUTCDate(), 0, 0, 0)),
+          $lt: new Date(
+            Date.UTC(y, m - 1, startDate.getUTCDate() + 1, 0, 0, 0)
+          ),
+        },
+      },
       {
         enrollment: resch.enrollment,
         student: resch.student,
@@ -258,7 +282,7 @@ async function handleCheck({ req, payload, adhoc }) {
         branch: branchId,
         date: startDate,
         status: "presente",
-        origin: "regular",
+        origin: "reschedule-in",
         reschedule: resch._id,
         removed: false,
         slotSnapshot,

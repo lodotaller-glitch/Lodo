@@ -150,6 +150,20 @@ export default function MyClassPage({ searchParams }) {
     };
   }, [statusLoading, statusError, attended]);
 
+  function makeTestClassKey({ branch, start, slot }) {
+    if (typeof slot !== "string") {
+      throw new Error("slot debe ser string tipo 'profId-dow-startMin-endMin'");
+    }
+
+    const payload = { b: branch, st: start, sl: slot };
+    const json = JSON.stringify(payload);
+
+    return btoa(json)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  }
+
   const showRescheduleButton = reschedulable && !statusLoading && !statusError;
 
   return (
@@ -324,6 +338,24 @@ export default function MyClassPage({ searchParams }) {
           )}
         </section>
       )}
+      {/* <button
+        onClick={() => {
+          const slotString = "68dd6e9ab8437d5636044ee7-4-1170-1320";
+          // ⚠️ OJO: acá poné el slot real (dow, startMin, endMin)
+          // Si ya lo tenés en searchParams, usá eso en su lugar.
+
+          const testKey = makeTestClassKey({
+            branch: user.branch,
+            start,
+            slot: slotString, // ← ESTA es la forma correcta
+          });
+
+          handleScan(testKey);
+        }}
+        className="rounded-xl border px-4 py-2 mt-4 text-sm"
+      >
+        Marcar asistencia (test)
+      </button> */}
 
       {/* Acciones secundarias */}
       {user && showRescheduleButton && (

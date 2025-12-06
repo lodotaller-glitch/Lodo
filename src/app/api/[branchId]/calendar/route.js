@@ -184,7 +184,7 @@ export async function GET(req, { params }) {
 
     // 4.6) 👈 ADHOC: Asistencias ad-hoc del mes (una sola clase)
     const adhoc = await Attendance.find({
-      origin: "adhoc",
+      origin: { $ne: "regular" },
       branch: branchId,
       professor: { $in: professorIds },
       date: { $gte: monthStart, $lte: monthEnd },
