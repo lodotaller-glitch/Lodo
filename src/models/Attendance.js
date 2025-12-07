@@ -53,7 +53,7 @@ const AttendanceSchema = new Schema(
     // NUEVO
     origin: {
       type: String,
-      enum: ["regular", "adhoc"],
+      enum: ["regular", "adhoc", "reschedule-in"],
       default: "regular",
       index: true,
     },

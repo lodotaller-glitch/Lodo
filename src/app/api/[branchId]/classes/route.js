@@ -204,7 +204,7 @@ export async function GET(req, { params }) {
       ? await Attendance.find({
           date: { $gte: dayStart, $lte: dayEnd },
           enrollment: { $in: allEnrollmentIds },
-          origin: { $in: [null, "regular"] },
+          origin: { $in: [null, "regular", "reschedule-in"] },
         })
           // .select("enrollment status removed")
           .lean()
@@ -381,7 +381,7 @@ export async function PATCH(req, { params }) {
             date,
             status: present ? "presente" : "ausente",
             removed: false,
-            origin: "regular", // importante para que cuente como clase regular
+            origin: "reschedule-in", // importante para que cuente como clase regular
             ...(slotSnapshot ? { slotSnapshot } : {}),
           },
           { upsert: true, setDefaultsOnInsert: true, runValidators: true }
