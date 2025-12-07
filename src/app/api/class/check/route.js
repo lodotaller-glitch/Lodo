@@ -156,7 +156,6 @@ async function handleCheck({ req, payload, adhoc }) {
     slot.professorId,
     monthAnchorUTC(startDate)
   );
-  console.log(sched);
   
   if (!sched || !(sched.slots || []).some((s) => sameSlot(s, slot))) {
     return new NextResponse("La franja no existe en el horario vigente", {
@@ -165,14 +164,11 @@ async function handleCheck({ req, payload, adhoc }) {
     });
   }
   
-  console.log("hola2");
   // ------------------------------------------------------------------
   // B) ENROLLMENT REGULAR
   // ------------------------------------------------------------------
   let enrollment = null;
-  console.log("hola");
   if (adhoc === "false" || !adhoc) {
-    
     enrollment = await Enrollment.findOne({
       student: student._id,
       branch: branchId,
