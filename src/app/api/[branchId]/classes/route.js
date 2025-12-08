@@ -49,7 +49,6 @@ export async function GET(req, { params }) {
     await dbConnect();
     const { branchId } = await params;
     const { searchParams } = new URL(req.url);
-
     const enrollmentId = searchParams.get("enrollmentId");
     const start = searchParams.get("start");
     const slot = searchParams.get("slot");
@@ -272,9 +271,31 @@ export async function GET(req, { params }) {
         a?.enrollment?.pay?.state === "pagado",
     }));
 
-    // 9) Combinar
+    function isValidSlotMatch(slots, dow, sMin, eMin) {
+      return (slots || []).some(
+        (s) => s.dayOfWeek === dow && s.startMin === sMin && s.endMin === eMin
+      );
+    }
+
+    // Filtrar regulares que perdieron el slot real
+    const regularClean = resultRegular.filter((r) => {
+      const en = enById.get(r.enrollmentId);
+      if (!en) return false;
+
+      return isValidSlotMatch(en.chosenSlots, dayOfWeek, startMin, endMin);
+    });
+
+    // Combinar resultados corregidos
+    const studentsFinal = [...regularClean, ...resultResIn, ...resultAdhoc];
+
+    const unique = new Map();
+    for (const s of studentsFinal) {
+      unique.set(s._id, s); // si está repetido, se queda con el último
+    }
+    const studentsUnique = Array.from(unique.values());
+
     return NextResponse.json({
-      students: [...resultRegular, ...resultResIn, ...resultAdhoc],
+      students: studentsUnique,
       disabled: disabledDocs.length > 0,
     });
   } catch (err) {
