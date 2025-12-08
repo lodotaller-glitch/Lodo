@@ -5,7 +5,7 @@ import {
   User,
   StudentReschedule,
   Attendance,
-  DisabledClass, // 👈 ADHOC: importar Attendance
+  DisabledClass,
 } from "@/models";
 import dbConnect from "@/lib/dbConnect";
 import { slotKey } from "@/functions/slotKey";
@@ -29,7 +29,7 @@ function datesForWeekdayInMonth(year, month, dayOfWeek) {
   const limit = dayOfWeek ? 4 : Infinity;
   while (d <= end) {
     result.push(new Date(d));
-    if (result.length >= limit) break; // 👈 corta en la 4.ª ocurrencia
+    if (result.length >= limit) break; // corta en la 4.ª ocurrencia
     d = new Date(
       Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 7)
     );
@@ -81,7 +81,7 @@ export async function GET(req, { params }) {
     }
 
     const monthStart = startOfMonthUTC(year, month);
-    const monthEnd = endOfMonthUTC(year, month); // 👈 ADHOC
+    const monthEnd = endOfMonthUTC(year, month);
 
     // 1) Schedules vigentes
     let schedules = await ProfessorSchedule.find({
@@ -90,12 +90,10 @@ export async function GET(req, { params }) {
       $or: [{ effectiveTo: null }, { effectiveTo: { $gt: monthStart } }],
     }).lean();
 
-    // 🔴 Disabled classes del mes
+    // Disabled classes del mes
     const disabledClasses = await DisabledClass.find({
       start: { $gte: monthStart.toISOString(), $lte: monthEnd.toISOString() },
     }).lean();
-
-    // Crear un Set rápido para lookup
     const disabledKeys = new Set(disabledClasses.map((d) => d.key));
 
     // Filtrado opcional por professorIds
@@ -125,33 +123,35 @@ export async function GET(req, { params }) {
       .lean();
     const userById = new Map(users.map((u) => [String(u._id), u]));
 
-    // 3) Inscripciones del mes
+    // 3) Inscripciones del mes -> traer student + _id + chosenSlots + assigned
     const enrollments = await Enrollment.find({
       professor: { $in: professorIds },
       year,
       month,
-      $or: [{ state: "activa" }],
+      $or: [{ state: "activa" }, { estado: "activa" }],
     })
-      .select("professor chosenSlots assigned asignado")
+      .select("_id student professor chosenSlots assigned")
       .lean();
 
-    // 4) Conteo base por (profesor, slot) mensual
-    const counts = new Map(); // profId -> Map(slotKey -> count)
+    // Preprocesar: map slotKey -> Set of enrollment docs (IDs)
+    // slotKey necesita la forma slotKey(slotObj, professorId)
+    const enrollmentsBySlot = new Map(); // `${profId}|${slotKey}` -> Set of enrollment docs
+    const enrollmentById = new Map(); // enrollmentId -> enrollment doc
     for (const e of enrollments) {
-      const isAssigned = e.assigned === true;
-      if (!isAssigned) continue;
-
+      const enId = String(e._id);
+      enrollmentById.set(enId, e);
+      if (e.assigned !== true) continue;
       const pid = String(e.professor);
-      if (!counts.has(pid)) counts.set(pid, new Map());
-      const inner = counts.get(pid);
-
       for (const s of e.chosenSlots || []) {
         const k = slotKey(s, pid);
-        inner.set(k, (inner.get(k) || 0) + 1);
+        const mapKey = `${pid}|${k}`;
+        if (!enrollmentsBySlot.has(mapKey))
+          enrollmentsBySlot.set(mapKey, new Set());
+        enrollmentsBySlot.get(mapKey).add(enId);
       }
     }
 
-    // 4.5) Reprogramaciones del mes (ajustes por día)
+    // 4) Reprogramaciones del mes (detallar por enrollment y student)
     const reschedules = await StudentReschedule.find({
       year,
       month,
@@ -160,29 +160,46 @@ export async function GET(req, { params }) {
         { toProfessor: { $in: professorIds } },
         { professor: { $in: professorIds } }, // compat legado
       ],
-    }).lean();
+    })
+      .select(
+        "enrollment student fromProfessor toProfessor fromDate toDate slotFrom slotTo"
+      )
+      .lean();
 
-    const movedIn = new Map(); // `${pid}|${dateISO}|${slotKey}` -> n
-    const movedOut = new Map(); // idem
-    const inc = (map, k) => map.set(k, (map.get(k) || 0) + 1);
+    // Mapear por key => sets
+    const movedInEnroll = new Map(); // `${pid}|${dateISO}|${slotKey}` -> Set(enrollmentId)
+    const movedInStudents = new Map(); // same key -> Set(studentId)
+    const movedOutEnroll = new Map(); // `${pid}|${dateISO}|${slotKey}` -> Set(enrollmentId)
+    const movedOutStudents = new Map(); // same key -> Set(studentId)
+
+    const addToSetMap = (map, key, val) => {
+      if (!map.has(key)) map.set(key, new Set());
+      map.get(key).add(val);
+    };
 
     for (const r of reschedules) {
       const toProf = String(r.toProfessor || r.professor || "");
       const fromProf = String(r.fromProfessor || "");
       const toDayISO = r.toDate ? dateOnlyISO(new Date(r.toDate)) : null;
       const fromDayISO = r.fromDate ? dateOnlyISO(new Date(r.fromDate)) : null;
+      const enId = r.enrollment ? String(r.enrollment) : null;
+      const studId = r.student ? String(r.student) : null;
 
       if (toProf && toDayISO && r.slotTo) {
         const kSlotTo = slotKey(r.slotTo, toProf);
-        inc(movedIn, `${toProf}|${toDayISO}|${kSlotTo}`);
+        const key = `${toProf}|${toDayISO}|${kSlotTo}`;
+        if (enId) addToSetMap(movedInEnroll, key, enId);
+        if (studId) addToSetMap(movedInStudents, key, studId);
       }
       if (fromProf && fromDayISO && r.slotFrom) {
         const kSlotFrom = slotKey(r.slotFrom, fromProf);
-        inc(movedOut, `${fromProf}|${fromDayISO}|${kSlotFrom}`);
+        const key = `${fromProf}|${fromDayISO}|${kSlotFrom}`;
+        if (enId) addToSetMap(movedOutEnroll, key, enId);
+        if (studId) addToSetMap(movedOutStudents, key, studId);
       }
     }
 
-    // 4.6) 👈 ADHOC: Asistencias ad-hoc del mes (una sola clase)
+    // 5) ADHOC: Asistencias ad-hoc del mes (traer student/enrollment)
     const adhoc = await Attendance.find({
       origin: { $ne: "regular" },
       branch: branchId,
@@ -190,18 +207,24 @@ export async function GET(req, { params }) {
       date: { $gte: monthStart, $lte: monthEnd },
       removed: { $ne: true },
     })
-      .select("professor date slotSnapshot")
+      .select("professor date slotSnapshot student enrollment")
       .lean();
 
-    const adhocIn = new Map(); // `${pid}|${dateISO}|${slotKey}` -> n
+    // map adhoc attendances -> Set(studentId) and Set(enrollmentId) per key
+    const adhocStudentMap = new Map(); // `${pid}|${dateISO}|${slotKey}` -> Set(studentId)
+    const adhocEnrollmentMap = new Map(); // same key -> Set(enrollmentId)
     for (const a of adhoc) {
       if (!a.slotSnapshot) continue;
       const pid = String(a.professor);
       const iso = dateOnlyISO(new Date(a.date));
       const k = slotKey(a.slotSnapshot, pid);
-      inc(adhocIn, `${pid}|${iso}|${k}`);
+      const key = `${pid}|${iso}|${k}`;
+      if (a.student) addToSetMap(adhocStudentMap, key, String(a.student));
+      if (a.enrollment)
+        addToSetMap(adhocEnrollmentMap, key, String(a.enrollment));
     }
 
+    // 6) Regular removed (attendance marked removed for regular origin)
     const regularRemoved = await Attendance.find({
       origin: "regular",
       professor: { $in: professorIds },
@@ -209,17 +232,24 @@ export async function GET(req, { params }) {
       removed: true,
       slotSnapshot: { $exists: true },
     })
-      .select("professor date slotSnapshot")
+      .select("professor date slotSnapshot enrollment student")
       .lean();
 
-    const regularRemovedMap = new Map(); // `${pid}|${dateISO}|${slotKey}` -> n
+    const regularRemovedEnrollMap = new Map(); // key -> Set(enrollmentId)
+    const regularRemovedStudentMap = new Map(); // key -> Set(studentId)
     for (const a of regularRemoved) {
       if (!a.slotSnapshot) continue;
       const pid = String(a.professor);
       const iso = dateOnlyISO(new Date(a.date));
       const k = slotKey(a.slotSnapshot, pid);
-      inc(regularRemovedMap, `${pid}|${iso}|${k}`);
+      const key = `${pid}|${iso}|${k}`;
+      if (a.enrollment)
+        addToSetMap(regularRemovedEnrollMap, key, String(a.enrollment));
+      if (a.student)
+        addToSetMap(regularRemovedStudentMap, key, String(a.student));
     }
+
+    // 7) Adhoc classes (documentos de clase ad-hoc con lista de students)
     const adhocClasses = await AdhocClass.find({
       professor: { $in: professorIds },
       branch: branchId,
@@ -228,7 +258,8 @@ export async function GET(req, { params }) {
     })
       .select("professor date slotSnapshot students capacity")
       .lean();
-    // 5) Expandir a eventos por día del mes
+
+    // 8) Expandir a eventos por día del mes
     const events = [];
     for (const sc of schedules) {
       const pid = String(sc.professor);
@@ -236,24 +267,92 @@ export async function GET(req, { params }) {
 
       const profName = prof?.name || "Profesor";
       const capacity = Math.max(1, Number(prof?.capacity ?? 10));
-      const inner = counts.get(pid) || new Map();
 
       for (const s of sc.slots) {
         const k = slotKey(s, pid);
-        const takenBase = inner.get(k) || 0;
-
         const dates = datesForWeekdayInMonth(year, month, s.dayOfWeek);
+
+        // Pre-get map key prefix for enrollments assigned to this slot (monthly)
+        const mapKeySlot = `${pid}|${k}`;
+        const enrollSetForSlot = enrollmentsBySlot.get(mapKeySlot) || new Set();
+
         for (const day of dates) {
           const iso = dateOnlyISO(day);
-          const outDay = movedOut.get(`${pid}|${iso}|${k}`) || 0;
-          const inDay = movedIn.get(`${pid}|${iso}|${k}`) || 0;
-          const adhocDay = adhocIn.get(`${pid}|${iso}|${k}`) || 0; // 👈 ADHOC
-          const removedDay = regularRemovedMap.get(`${pid}|${iso}|${k}`) || 0;
+          const key = `${pid}|${iso}|${k}`;
 
-          const takenDay = Math.max(
-            0,
-            takenBase - outDay + inDay + adhocDay - removedDay
-          );
+          // dayStudents será el set final de studentIds únicos para esa fecha+slot
+          const dayStudents = new Set();
+
+          // 1) Añadir estudiantes de las enrollments asignadas a este slot (siempre que existan)
+          for (const enId of enrollSetForSlot) {
+            const en = enrollmentById.get(enId);
+            if (!en) continue;
+            if (!en.student) continue;
+            dayStudents.add(String(en.student));
+          }
+
+          // 2) Quitar los movedOut (por enrollment o student)
+          if (movedOutEnroll.has(key)) {
+            for (const enId of movedOutEnroll.get(key)) {
+              const enDoc = enrollmentById.get(enId);
+              if (enDoc && enDoc.student)
+                dayStudents.delete(String(enDoc.student));
+            }
+          }
+          if (movedOutStudents.has(key)) {
+            for (const sId of movedOutStudents.get(key)) {
+              dayStudents.delete(sId);
+            }
+          }
+
+          // 3) Añadir movedIn (por enrollment o student)
+          if (movedInEnroll.has(key)) {
+            for (const enId of movedInEnroll.get(key)) {
+              const enDoc = enrollmentById.get(enId);
+              if (enDoc && enDoc.student)
+                dayStudents.add(String(enDoc.student));
+              else {
+                // si no tenemos enrollment en este mes (posible), no confiar — intentar extraer student via query no disponible aquí
+                // por seguridad, si movedInEnroll trae enId que no está en enrollmentById, no lo contamos (podés extender para buscarlos)
+              }
+            }
+          }
+          if (movedInStudents.has(key)) {
+            for (const sId of movedInStudents.get(key)) {
+              dayStudents.add(sId);
+            }
+          }
+
+          // 4) Añadir asistencias adhoc (students) para ese key
+          if (adhocStudentMap.has(key)) {
+            for (const sId of adhocStudentMap.get(key)) dayStudents.add(sId);
+          }
+          // (también podemos añadir adhocEnrollmentMap: si una attendance adhoc está vinculada a una enrollment, aseguramos el student)
+          if (adhocEnrollmentMap.has(key)) {
+            for (const enId of adhocEnrollmentMap.get(key)) {
+              const enDoc = enrollmentById.get(enId);
+              if (enDoc && enDoc.student)
+                dayStudents.add(String(enDoc.student));
+            }
+          }
+
+          // 5) Quitar regular removed (si hay attendance removed para el enrollment o student)
+          if (regularRemovedEnrollMap.has(key)) {
+            for (const enId of regularRemovedEnrollMap.get(key)) {
+              const enDoc = enrollmentById.get(enId);
+              if (enDoc && enDoc.student)
+                dayStudents.delete(String(enDoc.student));
+            }
+          }
+          if (regularRemovedStudentMap.has(key)) {
+            for (const sId of regularRemovedStudentMap.get(key)) {
+              dayStudents.delete(sId);
+            }
+          }
+
+          // Finalmente takenDay = cantidad unica de alumnos
+          const takenDay = dayStudents.size;
+
           const leftDay = Math.max(0, capacity - takenDay);
           const status = leftDay > 0 ? "available" : "full";
 
@@ -270,29 +369,38 @@ export async function GET(req, { params }) {
             weekday: s.dayOfWeek,
             capacityLeft: leftDay,
             status,
-            disabled, // 👈 agregado
+            disabled,
             _id: sc._id,
           });
         }
       }
     }
 
+    // 9) Procesar adhocClasses (eventos independientes de ad-hoc clase)
     for (const ac of adhocClasses) {
       const pid = String(ac.professor);
       const iso = dateOnlyISO(new Date(ac.date));
       const k = slotKey(ac.slotSnapshot, pid);
-      const takenFromEnrolls = (ac.students || []).length; // inscritos manuales
-      // Además contamos attendances ad-hoc para esa fecha/slot (ya lo hiciste en adhocIn)
-      const adhocAttendances = adhocIn.get(`${pid}|${iso}|${k}`) || 0;
-      // decide takenDay: prefer inscritos + any extra attendances not in students arr
-      // avoid double count: if a student both enrolled and created attendance we still want unique count.
-      // Simplest: taken = max(enrolled, adhocAttendances) OR combine unique — for robust solve, query distinct attendance students.
-      // Aquí combinamos conservadoramente:
-      const takenDay = Math.max(takenFromEnrolls, adhocAttendances);
+
+      // students inscritos en la AdhocClass (array de ids)
+      const enrolledStudentsInAc = new Set(
+        (ac.students || []).map((x) => String(x))
+      );
+
+      // asistentes adhoc registrados como Attendance para esa key (puede incluir alumnos no en ac.students)
+      const adhocAttendanceSet =
+        adhocStudentMap.get(`${pid}|${iso}|${k}`) || new Set();
+
+      // combinar ambos sets para unicidad
+      const combined = new Set(enrolledStudentsInAc);
+      for (const sId of adhocAttendanceSet) combined.add(sId);
+
+      const takenDay = combined.size;
       const capacity =
         ac.capacity || Math.max(1, Number(userById.get(pid)?.capacity ?? 10));
       const leftDay = Math.max(0, capacity - takenDay);
       const status = leftDay > 0 ? "available" : "full";
+
       const startISO2 = buildDateTimeUTC(
         new Date(ac.date),
         ac.slotSnapshot.startMin
@@ -310,7 +418,7 @@ export async function GET(req, { params }) {
         slotKey: k,
         capacityLeft: leftDay,
         status,
-        disabled: disabled2, // 👈 agregado
+        disabled: disabled2,
         _id: ac._id,
         isAdhocClass: true,
       });
