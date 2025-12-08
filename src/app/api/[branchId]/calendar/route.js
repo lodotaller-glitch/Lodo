@@ -171,8 +171,6 @@ export async function GET(req, { params }) {
         "enrollment student fromProfessor toProfessor fromDate toDate slotFrom slotTo"
       )
       .lean();
-
-      console.log(reschedules);
       
 
     const movedInEnroll = new Map();
