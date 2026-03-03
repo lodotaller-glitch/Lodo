@@ -23,7 +23,7 @@ function endOfMonthUTC(year, month) {
 // 👇 NUEVO: normaliza una fecha a medianoche UTC y devuelve ISO (clave de mapa)
 function dateOnlyISO(d) {
   const only = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
   );
   return only.toISOString();
 }
@@ -43,7 +43,7 @@ function datesForWeekdayInMonth(year, month, dayOfWeek) {
     result.push(new Date(d));
     if (result.length >= limit) break; // 👈 corta en la 4.ª ocurrencia
     d = new Date(
-      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 7)
+      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 7),
     );
   }
   return result;
@@ -60,8 +60,8 @@ function buildDateTimeUTC(dateOnlyUTC, minutesFromMidnight) {
       h,
       m,
       0,
-      0
-    )
+      0,
+    ),
   );
 }
 
@@ -79,7 +79,7 @@ export async function getProfessorMonthCalendar({ professorId, year, month }) {
   // 1) horario vigente
   const schedule = await ProfessorSchedule.findActiveForDate(
     professorId,
-    monthStart
+    monthStart,
   );
   if (!schedule) return [];
 
@@ -228,7 +228,7 @@ export async function getProfessorMonthCalendar({ professorId, year, month }) {
 
       const takenDay = Math.max(
         0,
-        takenBase - outDay + inDay + adhocDay - removedDay
+        takenBase - outDay + inDay + adhocDay - removedDay,
       );
       const left = Math.max(0, capacity - takenDay);
       const start = buildDateTimeUTC(day, s.startMin);
@@ -287,7 +287,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
   const DOW_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
   const strMin = (min) =>
     `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(
-      min % 60
+      min % 60,
     ).padStart(2, "0")}`;
 
   const ATT_PRESENT = new Set([
@@ -309,7 +309,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
 
   const dateOnlyISO = (d) => {
     const only = new Date(
-      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
     );
     return only.toISOString();
   };
@@ -334,6 +334,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
     year,
     month,
     state: "activa",
+    assigned: true,
   })
     .populate("professor", "name nombre")
     .lean();
@@ -386,7 +387,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
       const pidFromAtt = a.professor ? String(a.professor) : "";
       const k = `${pidFromAtt}|${dayISO}|${slotKey(
         a.slotSnapshot,
-        pidFromAtt
+        pidFromAtt,
       )}`;
       removedRegularKeys.add(k);
     }
@@ -413,7 +414,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
 
       base.push({
         title: `${DOW_SHORT[s.dayOfWeek]} ${strMin(s.startMin)}–${strMin(
-          s.endMin
+          s.endMin,
         )}`,
         start,
         end: buildDateTimeUTC(day, s.endMin),
@@ -437,7 +438,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
 
         base.push({
           title: `${DOW_SHORT[s.dayOfWeek]} ${strMin(s.startMin)}–${strMin(
-            s.endMin
+            s.endMin,
           )} (adhoc)`,
           start,
           end: buildDateTimeUTC(day, s.endMin),
@@ -485,20 +486,20 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
       const td = new Date(r.toDate);
       if (td >= monthStart && td <= monthEnd) {
         const dayOnly = new Date(
-          Date.UTC(td.getUTCFullYear(), td.getUTCMonth(), td.getUTCDate())
+          Date.UTC(td.getUTCFullYear(), td.getUTCMonth(), td.getUTCDate()),
         );
         const toProf = String(r.toProfessor || r.professor || pid);
 
         const startTo = buildDateTimeUTC(dayOnly, r.slotTo.startMin);
         const toDayISO = dateOnlyISO(dayOnly);
         const attTo = attendanceByKey.get(
-          `${toDayISO}|${slotKey(r.slotTo, toProf)}`
+          `${toDayISO}|${slotKey(r.slotTo, toProf)}`,
         );
         const status = statusAttendanse(attTo?.status, startTo);
 
         movedIn.push({
           title: `${DOW_SHORT[r.slotTo.dayOfWeek]} ${strMin(
-            r.slotTo.startMin
+            r.slotTo.startMin,
           )}–${strMin(r.slotTo.endMin)} (reprogramada)`,
           start: startTo,
           end: buildDateTimeUTC(dayOnly, r.slotTo.endMin),
@@ -530,7 +531,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
     if (td < monthStart || td > monthEnd) continue;
 
     const dayOnly = new Date(
-      Date.UTC(td.getUTCFullYear(), td.getUTCMonth(), td.getUTCDate())
+      Date.UTC(td.getUTCFullYear(), td.getUTCMonth(), td.getUTCDate()),
     );
     const profId = a.professor ? String(a.professor) : "";
     const startAdhoc = buildDateTimeUTC(dayOnly, a.slotSnapshot.startMin);
@@ -538,7 +539,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
 
     adhocIn.push({
       title: `${DOW_SHORT[a.slotSnapshot.dayOfWeek]} ${strMin(
-        a.slotSnapshot.startMin
+        a.slotSnapshot.startMin,
       )}–${strMin(a.slotSnapshot.endMin)} (adhoc)`,
       start: startAdhoc,
       end: buildDateTimeUTC(dayOnly, a.slotSnapshot.endMin),
@@ -575,7 +576,7 @@ export async function getStudentMonthCalendar({ studentId, year, month }) {
   for (const ev of movedIn) put(ev);
 
   const events = Array.from(byKey.values()).sort(
-    (a, b) => new Date(a.start) - new Date(b.start)
+    (a, b) => new Date(a.start) - new Date(b.start),
   );
 
   // Filtrar clases canceladas para estudiantes
