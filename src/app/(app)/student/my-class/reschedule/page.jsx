@@ -81,7 +81,7 @@ export default function ReprogramarClasePage({ searchParams }) {
         setError("");
         const { enrollments } = await fetchEnrollmentsByStudent(
           user?._id,
-          user?.branch
+          user?.branch,
         );
         const startDate = new Date(start);
         const year = startDate.getUTCFullYear();
@@ -91,7 +91,7 @@ export default function ReprogramarClasePage({ searchParams }) {
             e.year === year &&
             e.month === month &&
             String(e.professor?._id || e.professor || e.profesor) ===
-              String(profesorId)
+              String(profesorId),
         );
         if (!enrollment) {
           setError("No se encontró la inscripción");
@@ -133,9 +133,9 @@ export default function ReprogramarClasePage({ searchParams }) {
           <ul style="margin:0; padding-left:18px">\
             <li><b>Original:</b> ${fmt(originalLocal)}</li>\
             <li><b>Nuevo:</b> ${fmt(nuevoInicio, "EEE d/MM HH:mm")} – ${fmt(
-        nuevoFin,
-        "HH:mm"
-      )}</li>\
+              nuevoFin,
+              "HH:mm",
+            )}</li>\
           </ul>\
         </div>\
       `,
@@ -207,6 +207,33 @@ export default function ReprogramarClasePage({ searchParams }) {
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-6 space-y-4">
+      {" "}
+      <div
+        className="rounded-2xl border"
+        style={{
+          borderColor: BRAND.soft,
+          background: `linear-gradient(180deg, ${BRAND.soft}55, transparent)`,
+        }}
+      >
+        {" "}
+        <p
+          role="alert"
+          className="rounded-xl border px-3 py-2 text-sm"
+          style={{
+            color: "#991B1B",
+            backgroundColor: "#FEF2F2",
+            borderColor: "#FECACA",
+          }}
+        >
+          sistema deshabilitado para pruebas, contacta a lodo para reprogramar
+          tu clase{" "}
+        </p>
+      </div>
+    </main>
+  );
+
+  return (
+    <main className="mx-auto max-w-2xl p-4 sm:p-6 space-y-4">
       {/* Encabezado */}
       <div
         className="rounded-2xl border"
@@ -268,7 +295,7 @@ export default function ReprogramarClasePage({ searchParams }) {
                   disabled={saving}
                 />
               </li>
-            )
+            ),
           )}
         </ul>
       )}
