@@ -1,7 +1,8 @@
 // /app/api/[branchId]/classes/status/route.js
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
-import { Attendance } from "@/models";
+import { Attendance, StudentReschedule } from "@/models";
+import moment from "moment";
 
 export async function GET(req, { params }) {
   try {
@@ -23,8 +24,29 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: "Fecha inválida" }, { status: 400 });
     }
 
+    const monthStart = moment(startDate).utc().startOf("month").toDate();
+    const monthEnd = moment(startDate).utc().endOf("month").toDate();
+
     // Buscamos una asistencia (regular o adhoc) EXACTA para ese alumno, profe y fecha.
     // Tus upserts de asistencia "regular" guardan también student.
+
+    const existsReschedule = !!(await StudentReschedule.exists({
+      student: studentId,
+      professor: professorId,
+      branch: branchId,
+      toDate: startDate,
+    }));
+
+    const existsRescheduleInMonth = !!(await StudentReschedule.exists({
+      student: studentId,
+      professor: professorId,
+      branch: branchId,
+      fromDate: {
+        $gte: monthStart,
+        $lte: monthEnd,
+      },
+    }));
+
     const att = await Attendance.findOne({
       student: studentId,
       professor: professorId,
@@ -49,6 +71,7 @@ export async function GET(req, { params }) {
       tooOld,
       origin: att?.origin || null,
       now: now.toISOString(),
+      existsReschedule: existsReschedule || existsRescheduleInMonth,
     });
   } catch (err) {
     console.error("GET /classes/status error:", err);

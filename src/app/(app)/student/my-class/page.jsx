@@ -38,6 +38,7 @@ export default function MyClassPage({ searchParams }) {
   const [attended, setAttended] = useState(false);
   const [reschedulable, setReschedulable] = useState(true);
   const [tooOld, setTooOld] = useState(false);
+  const [existsReschedule, setExistsReschedule] = useState(false);
 
   // --------- cargar estado de la clase para el alumno ----------
   useEffect(() => {
@@ -48,7 +49,7 @@ export default function MyClassPage({ searchParams }) {
       try {
         const url = new URL(
           `/api/${user.branch}/classes/status`,
-          window.location.origin
+          window.location.origin,
         );
         url.searchParams.set("studentId", user._id);
         url.searchParams.set("professorId", professorId);
@@ -62,11 +63,13 @@ export default function MyClassPage({ searchParams }) {
         setAttended(Boolean(data.attended));
         setReschedulable(Boolean(data.reschedulable));
         setTooOld(Boolean(data.tooOld));
+        setExistsReschedule(Boolean(data.existsReschedule));
       } catch (e) {
         setStatusError(e.message);
         setAttended(false);
         setReschedulable(false);
         setTooOld(false);
+        setExistsReschedule(false);
       } finally {
         setStatusLoading(false);
       }
@@ -108,8 +111,8 @@ export default function MyClassPage({ searchParams }) {
     if (user && start && professorId) {
       router.push(
         `/student/my-class/reschedule?start=${encodeURIComponent(
-          start
-        )}&profesorId=${professorId}`
+          start,
+        )}&profesorId=${professorId}`,
       );
     }
   }
@@ -317,20 +320,20 @@ export default function MyClassPage({ searchParams }) {
                   feedback.type === "success"
                     ? "#166534"
                     : feedback.type === "error"
-                    ? "#991B1B"
-                    : BRAND.text,
+                      ? "#991B1B"
+                      : BRAND.text,
                 backgroundColor:
                   feedback.type === "success"
                     ? "#ECFDF5"
                     : feedback.type === "error"
-                    ? "#FEF2F2"
-                    : `${BRAND.soft}66`,
+                      ? "#FEF2F2"
+                      : `${BRAND.soft}66`,
                 borderColor:
                   feedback.type === "success"
                     ? "#86EFAC"
                     : feedback.type === "error"
-                    ? "#FECACA"
-                    : BRAND.soft,
+                      ? "#FECACA"
+                      : BRAND.soft,
               }}
             >
               {feedback.text}
@@ -358,7 +361,7 @@ export default function MyClassPage({ searchParams }) {
       </button> */}
 
       {/* Acciones secundarias */}
-      {user && showRescheduleButton && (
+      {user && showRescheduleButton && !existsReschedule && (
         <div className="flex items-center gap-3">
           <button
             onClick={handleReschedule}
