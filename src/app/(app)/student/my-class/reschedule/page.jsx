@@ -10,6 +10,7 @@ import { addHours, parseISO, differenceInMinutes } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 const TZ = "America/Argentina/Cordoba";
@@ -79,6 +80,17 @@ export default function ReprogramarClasePage({ searchParams }) {
       try {
         setLoading(true);
         setError("");
+
+        const { data } = await axios.get(`/api/${user.branch}/classes/status`, {
+          params: {
+            studentId: user._id,
+            profesorId,
+            start,
+          },
+        });
+
+        if (data.existsReschedule) return;
+
         const { enrollments } = await fetchEnrollmentsByStudent(
           user?._id,
           user?.branch,
@@ -204,33 +216,6 @@ export default function ReprogramarClasePage({ searchParams }) {
       </main>
     );
   }
-
-  return (
-    <main className="mx-auto max-w-2xl p-4 sm:p-6 space-y-4">
-      {" "}
-      <div
-        className="rounded-2xl border"
-        style={{
-          borderColor: BRAND.soft,
-          background: `linear-gradient(180deg, ${BRAND.soft}55, transparent)`,
-        }}
-      >
-        {" "}
-        <p
-          role="alert"
-          className="rounded-xl border px-3 py-2 text-sm"
-          style={{
-            color: "#991B1B",
-            backgroundColor: "#FEF2F2",
-            borderColor: "#FECACA",
-          }}
-        >
-          sistema deshabilitado para pruebas, contacta a lodo para reprogramar
-          tu clase{" "}
-        </p>
-      </div>
-    </main>
-  );
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-6 space-y-4">
