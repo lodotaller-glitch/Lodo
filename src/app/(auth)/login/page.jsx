@@ -4,6 +4,7 @@ import { useState } from "react";
 import api from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 // Cambiá esta ruta por la imagen que quieras usar de fondo
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const { setAccessToken, setUser } = useAuth();
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -95,19 +97,39 @@ export default function LoginPage() {
           >
             Contraseña
           </label>
-          <input
-            className="w-full rounded-xl border bg-white/90 px-3 py-2.5 shadow-sm outline-none transition focus:ring-2"
-            style={{
-              borderColor: BRAND.soft,
-              color: BRAND.text,
-              boxShadow: "0 1px 1px rgba(0,0,0,.04)",
-            }}
-            type="password"
-            value={password}
-            required
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-          />
+
+          <div className="relative group">
+            <input
+              className="w-full rounded-xl border bg-white/90 px-3 py-2.5 pr-11 shadow-sm outline-none transition focus:ring-2"
+              style={{
+                borderColor: BRAND.soft,
+                color: BRAND.text,
+                boxShadow: "0 1px 1px rgba(0,0,0,.04)",
+              }}
+              type={showPassword ? "text" : "password"}
+              value={password}
+              required
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute inset-y-0 right-0 flex items-center justify-center px-3 transition-colors group-focus-within:text-[#7E6650]"
+              style={{ color: BRAND.main }}
+              aria-label={
+                showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+              }
+            >
+              {showPassword ? (
+                <EyeOff size={20} strokeWidth={2} />
+              ) : (
+                <Eye size={20} strokeWidth={2} />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* CTA */}
