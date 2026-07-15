@@ -34,18 +34,22 @@ export async function POST(req) {
   // Guardar historial de logins
   // ===============================
 
-  user.loginHistory.push({
-    ip,
-    country,
-    city,
-    region,
-    userAgent,
-    createdAt: new Date(),
-  });
+  const alreadyExists = user.loginHistory.some((login) => login.ip === ip);
 
-  // Mantener solamente los últimos 20 inicios
-  if (user.loginHistory.length > 20) {
-    user.loginHistory = user.loginHistory.slice(-20);
+  if (!alreadyExists) {
+    user.loginHistory.push({
+      ip,
+      country,
+      city,
+      region,
+      userAgent,
+      createdAt: new Date(),
+    });
+
+    // Mantener solo los últimos 20 registros
+    if (user.loginHistory.length > 20) {
+      user.loginHistory = user.loginHistory.slice(-20);
+    }
   }
 
   // ===============================
@@ -62,6 +66,7 @@ export async function POST(req) {
     branch: user.branch,
     capacity: user.capacity,
     clayKg: user.clayKg ?? 0,
+    loginHistory: user.loginHistory,
   });
 
   const refreshToken = signRefreshToken({ id: user._id, role: user.role });

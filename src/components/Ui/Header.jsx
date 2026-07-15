@@ -60,6 +60,7 @@ export default function Header({ onNavigateStart }) {
           { href: `/${branchId}/networks`, label: "Redes" },
           { href: `/${branchId}/pieces`, label: "Piezas" },
           { href: `/${branchId}/payments`, label: "Pagos" },
+          { href: `/${branchId}/profile`, label: "Perfil" },
           { href: `/branches`, label: "Sucursales" },
         ];
       case "networks":

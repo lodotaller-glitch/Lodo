@@ -35,6 +35,7 @@ export async function POST(req) {
     branch: user.branch,
     capacity: user.capacity,
     clayKg: user.clayKg ?? 0,
+    loginHistory: user.loginHistory,
   });
 
   const refreshToken = signRefreshToken({ id: user._id, role: user.role });
@@ -51,6 +52,7 @@ export async function POST(req) {
       role: user.role,
       branch: user.branch,
       clayKg: user.clayKg ?? 0,
+      loginHistory: user.loginHistory,
     },
   });
 

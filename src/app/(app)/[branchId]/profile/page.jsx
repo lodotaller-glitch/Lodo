@@ -48,6 +48,7 @@ export default function ProfessorProfilePage() {
     }
   }
 
+
   return (
     <main className="mx-auto p-4 sm:p-6 space-y-4">
       <h1 className="text-2xl font-semibold" style={{ color: BRAND.text }}>
