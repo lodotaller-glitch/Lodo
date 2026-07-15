@@ -3,6 +3,21 @@ import mongoose, { Schema, models, model } from "mongoose";
 
 export const USER_ROLES = ["admin", "professor", "networks", "student"];
 
+const LoginHistorySchema = new Schema(
+  {
+    ip: String,
+    country: String,
+    city: String,
+    region: String,
+    userAgent: String,
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false },
+);
+
 const UserSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -19,6 +34,12 @@ const UserSchema = new Schema(
     capacity: { type: Number, min: 1, default: 10 },
     clayKg: { type: Number, default: 0, min: 0 },
     refreshToken: { type: String },
+
+    loginHistory: {
+      type: [LoginHistorySchema],
+      default: [],
+    },
+
     branch: {
       type: mongoose.Types.ObjectId,
       ref: "Branch",
@@ -26,7 +47,7 @@ const UserSchema = new Schema(
       index: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Antes de guardar el usuario en la base de datos, hashea la password
