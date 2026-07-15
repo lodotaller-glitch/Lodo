@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import LoginHistory from "@/components/User/LoginHistory";
 const BRAND = { main: "#A08775", soft: "#DDD7C9", text: "#1F1C19" };
 
 function PayBadge({ estado }) {
@@ -57,12 +58,12 @@ export default function ProfilePage() {
       if (!user?._id || !user?.branch) return;
       try {
         const res = await fetch(
-          `/api/${user.branch}/enrollments/by-student/${user._id}`
+          `/api/${user.branch}/enrollments/by-student/${user._id}`,
         );
         const data = await res.json();
         if (res.ok)
           setEnrollments(
-            Array.isArray(data.enrollments) ? data.enrollments : []
+            Array.isArray(data.enrollments) ? data.enrollments : [],
           );
       } catch {}
     }
@@ -95,7 +96,7 @@ export default function ProfilePage() {
   // Ordenar inscripciones por año/mes desc
   const sorted = useMemo(() => {
     return [...enrollments].sort(
-      (a, b) => b.year - a.year || b.month - a.month
+      (a, b) => b.year - a.year || b.month - a.month,
     );
   }, [enrollments]);
 
@@ -236,20 +237,20 @@ export default function ProfilePage() {
                   notice.type === "success"
                     ? "#166534"
                     : notice.type === "error"
-                    ? "#991B1B"
-                    : BRAND.text,
+                      ? "#991B1B"
+                      : BRAND.text,
                 backgroundColor:
                   notice.type === "success"
                     ? "#ECFDF5"
                     : notice.type === "error"
-                    ? "#FEF2F2"
-                    : `${BRAND.soft}66`,
+                      ? "#FEF2F2"
+                      : `${BRAND.soft}66`,
                 borderColor:
                   notice.type === "success"
                     ? "#86EFAC"
                     : notice.type === "error"
-                    ? "#FECACA"
-                    : BRAND.soft,
+                      ? "#FECACA"
+                      : BRAND.soft,
               }}
             >
               {notice.text}
@@ -317,7 +318,9 @@ export default function ProfilePage() {
                         {e.professor.name}
                       </span>
                     )}
-                    <PayBadge estado={e.pay2?.state || e.pay?.state || "pendiente"} />
+                    <PayBadge
+                      estado={e.pay2?.state || e.pay?.state || "pendiente"}
+                    />
                   </div>
                 </li>
               ))}
@@ -325,6 +328,7 @@ export default function ProfilePage() {
           )}
         </section>
       </div>
+      <LoginHistory history={user?.loginHistory || []} />
     </main>
   );
 }

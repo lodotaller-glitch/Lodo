@@ -36,7 +36,6 @@ export function AuthProvider({ children }) {
 
   async function refresh() {
     try {
-      
       // Importante: que tu axios tenga withCredentials:true para mandar la cookie refreshToken
       const { data } = await api.post("/auth/refresh-token");
       setAccessToken(data.accessToken || null);
@@ -55,6 +54,7 @@ export function AuthProvider({ children }) {
             role: claims.role,
             state: claims.state,
             capacity: claims.capacity,
+            loginHistory: claims.loginHistory || [],
           });
         } else {
           setUser(null);
@@ -99,7 +99,7 @@ export function AuthProvider({ children }) {
       refresh,
       logout,
     }),
-    [accessToken, user, loading]
+    [accessToken, user, loading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
