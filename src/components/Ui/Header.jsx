@@ -68,6 +68,7 @@ export default function Header({ onNavigateStart }) {
           ...common,
           { href: `/${user?.branch}`, label: "Inicio" },
           { href: `/${user?.branch}/students`, label: "Estudiantes" },
+          { href: `/${branchId}/profile`, label: "Perfil" },
           { href: `/branches`, label: "Sucursales" },
         ];
       case "professor":
